@@ -207,6 +207,36 @@ export class MenuManager {
         }
       },
     })
+
+    this.plugin.addCommand({
+      id: "mark-current-note-for-blog",
+      name: $("ui.blog.command_mark"),
+      callback: () => { void this.plugin.blogPublisher.markCurrentNote("post"); },
+    })
+
+    this.plugin.addCommand({
+      id: "mark-current-note-for-dynamic",
+      name: $("ui.blog.command_mark_dynamic"),
+      callback: () => { void this.plugin.blogPublisher.markCurrentNote("dynamic"); },
+    })
+
+    this.plugin.addCommand({
+      id: "edit-current-note-blog-properties",
+      name: $("ui.blog.command_edit_properties"),
+      callback: () => { void this.plugin.blogPublisher.editCurrentNoteProperties(); },
+    })
+
+    this.plugin.addCommand({
+      id: "publish-current-note-to-blog",
+      name: $("ui.blog.command_publish_note"),
+      callback: () => { void this.plugin.blogPublisher.publishCurrentNote(); },
+    })
+
+    this.plugin.addCommand({
+      id: "publish-blog-vault",
+      name: $("ui.blog.command_publish_all"),
+      callback: () => { void this.plugin.blogPublisher.publishAll(); },
+    })
   }
 
 
@@ -822,5 +852,3 @@ export class MenuManager {
     }
   }
 }
-
-

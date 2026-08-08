@@ -31,6 +31,7 @@ import { $ } from "./i18n/lang";
 import { SsoImportModal } from "./views/sso-import-modal";
 import { StatusBarManager } from "./lib/ui/status_bar_manager";
 import { SyncProgressTracker } from "./lib/sync/sync_progress_tracker";
+import { BlogPublisher } from "./lib/blog/blog_publisher";
 
 
 
@@ -52,6 +53,7 @@ export default class FastSync extends Plugin {
   settingTab: SettingTab                           // 设置面板
   settings: PluginSettings                        // 插件设置
   api: HttpApiService                             // HTTP API 服务
+  blogPublisher: BlogPublisher                    // Firefly 博客发布适配器
   websocket: WebSocketManager                     // WebSocket 客户端
   versionManager: VersionManager                  // 版本提示与自动升级管理器
   configManager: ConfigManager                    // 配置管理器
@@ -387,6 +389,7 @@ export default class FastSync extends Plugin {
     this.setupProgressTracker();
     this.localStorageManager = new LocalStorageManager(this)
     this.api = new HttpApiService(this)
+    this.blogPublisher = new BlogPublisher(this)
     this.websocket = new WebSocketManager(this)
 
     await this.loadSettings()

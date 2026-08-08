@@ -145,6 +145,7 @@ export interface FileInfoResponse {
 export interface ApiResponse<T = unknown> {
     code: number;
     message?: string;
+    details?: string;
     data: T;
 }
 
@@ -153,6 +154,21 @@ export interface ApiResponse<T = unknown> {
  */
 export class HttpApiService {
     constructor(private plugin: FastSync) { }
+
+    /** Start the server-side Firefly projection for one canonical note or the vault. */
+    async executeBlogPublish(path?: string): Promise<void> {
+        const { status, json } = await this.request("/api/blog-publish/execute", {
+            method: "POST",
+            body: JSON.stringify({
+                vault: this.plugin.settings.vault,
+                path: path || ""
+            })
+        });
+        const response = json as ApiResponse<unknown>;
+        if (status !== 200 || !this.isSuccess(response)) {
+            throw new Error(response?.details || response?.message || `HTTP ${status}`);
+        }
+    }
 
     /**
      * 判断响应是否成功 (code > 0 && code < 300)
