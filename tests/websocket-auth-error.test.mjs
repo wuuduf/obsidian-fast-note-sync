@@ -1,3 +1,4 @@
+import { diagnostics } from "./helpers/diagnostics.mjs";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
@@ -5,7 +6,7 @@ import vm from "node:vm";
 import ts from "typescript";
 
 const root = path.resolve(import.meta.dirname, "..");
-const sourcePath = path.join(root, "src", "lib", "websocket.ts");
+const sourcePath = path.join(root, "src", "lib", "sync", "websocket_manager.ts");
 const source = fs.readFileSync(sourcePath, "utf8");
 
 const transpiled = ts.transpileModule(source, {
@@ -19,10 +20,11 @@ const transpiled = ts.transpileModule(source, {
 
 const module = { exports: {} };
 const requireStub = (id) => {
+  if (id.endsWith("/diagnostics")) return diagnostics;
   switch (id) {
     case "obsidian":
       return { moment: Object.assign(() => ({ format: () => "" }), { locale: () => "zh-cn" }), Platform: {} };
-    case "./helps":
+    case "../utils/helpers":
       return {
         dump: () => undefined,
         isWsUrl: () => true,
@@ -30,8 +32,9 @@ const requireStub = (id) => {
         isPathExcluded: () => false,
         isVersionNew: () => false,
         showSyncNotice: () => undefined,
+        safeStringify: (value) => typeof value === "string" ? value : JSON.stringify(value),
       };
-    case "./file_operator":
+    case "./operator_file":
       return {
         handleFileChunkDownload: () => undefined,
         BINARY_PREFIX_FILE_SYNC: "fs",
@@ -46,8 +49,13 @@ const requireStub = (id) => {
       };
     case "./sync_log_manager":
       return { SyncLogManager: { getInstance: () => ({ logReceivedMessage: () => undefined, logSentMessage: () => undefined }) } };
-    case "../i18n/lang":
+    case "../../i18n/lang":
       return { $: (key) => key };
+    case "../../pb/protobuf_mapper":
+    case "./websocket_action":
+    case "./websocket_client":
+    case "../utils/types":
+      return {};
     default:
       throw new Error(`Unexpected require: ${id}`);
   }

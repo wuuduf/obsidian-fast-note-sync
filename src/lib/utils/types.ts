@@ -39,6 +39,7 @@ export interface ReceiveMessage {
     ctime: number;
     mtime: number;
     lastTime: number;
+    traceId?: string;
     context?: string;
     // 所属下载页（0-based，内部值，由 websocket_manager.ts 从 WSResponse 信封 1-based 转换后并入 payload）；
     // 旧服务端/非分页项为 undefined，下游按 undefined 走旧的单页全局计数路径（设计稿 §4.3）
@@ -55,6 +56,9 @@ export interface SyncMessage {
 }
 
 export interface ReceiveFileSyncUpdateMessage {
+    /** Source sync context captured before asynchronous local work. */
+    traceId?: string;
+    context?: string;
     path: string;
     vault: string;
     pathHash: string;
@@ -68,6 +72,9 @@ export interface ReceiveFileSyncUpdateMessage {
 }
 
 export interface FileUploadMessage {
+    /** Source sync context captured before asynchronous local work. */
+    traceId?: string;
+    context?: string;
     path: string;
     pathHash: string;
     ctime: number;
@@ -79,6 +86,9 @@ export interface FileUploadMessage {
 }
 
 export interface FileSyncChunkDownloadMessage {
+    /** Source sync context captured before asynchronous local work. */
+    traceId?: string;
+    context?: string;
     path: string;
     contentHash?: string;
     ctime: number;
@@ -90,6 +100,14 @@ export interface FileSyncChunkDownloadMessage {
 }
 
 export interface FileDownloadSession {
+    /** Vault captured before local asynchronous work begins. */
+    vault?: string;
+    /** Source sync context captured before asynchronous local work. */
+    traceId?: string;
+    context?: string;
+    /** Deferred rename pages that depend on this re-pushed file reaching disk. */
+    completionOwners?: Array<{ pageIndex?: number; context: string }>;
+    completionState?: { reported: boolean };
     path: string;
     contentHash?: string;
     ctime: number;
@@ -107,6 +125,9 @@ export interface FileDownloadSession {
 }
 
 export interface ReceiveMtimeMessage {
+    /** Source sync context captured before asynchronous local work. */
+    traceId?: string;
+    context?: string;
     path: string;
     ctime: number;
     mtime: number;
@@ -116,6 +137,9 @@ export interface ReceiveMtimeMessage {
 }
 
 export interface ReceivePathMessage {
+    /** Source sync context captured before asynchronous local work. */
+    traceId?: string;
+    context?: string;
     path: string;
     lastTime?: number;
     /** 所属下载页（0-based），见 ReceiveMessage.pageIndex 注释 / owning download page, see ReceiveMessage.pageIndex */
@@ -129,6 +153,7 @@ export interface SyncEndData {
     needModifyCount?: number;
     needSyncMtimeCount?: number;
     needDeleteCount?: number;
+    traceId?: string;
     context?: string;
 }
 
@@ -137,6 +162,7 @@ export interface NoteSyncData {
     notes: SnapFile[];
     delNotes: PathHashFile[];
     missingNotes: PathHashFile[];
+    traceId?: string;
     context?: string;
 }
 
@@ -145,6 +171,7 @@ export interface FileSyncData {
     files: SnapFile[];
     delFiles: PathHashFile[];
     missingFiles: PathHashFile[];
+    traceId?: string;
     context?: string;
 }
 
@@ -153,6 +180,7 @@ export interface ConfigSyncData {
     configs: SnapFile[];
     delConfigs: PathHashFile[];
     missingConfigs: PathHashFile[];
+    traceId?: string;
     context?: string;
 }
 
@@ -163,10 +191,14 @@ export interface FolderSyncRequest {
     folders: SnapFolder[];
     delFolders?: PathHashFile[];
     missingFolders?: PathHashFile[];
+    traceId?: string;
     context?: string;
 }
 
 export interface FolderSyncRenameMessage {
+    /** Source sync context captured before asynchronous local work. */
+    traceId?: string;
+    context?: string;
     path: string;
     pathHash: string;
     ctime: number;
@@ -183,6 +215,7 @@ export interface FolderSyncData {
     folders: SnapFolder[];
     delFolders: PathHashFile[];
     missingFolders: PathHashFile[];
+    traceId?: string;
     context?: string;
 }
 

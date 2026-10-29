@@ -178,4 +178,24 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   assert.equal(ls.has("fns-fileHashMap"), true, "旧 key 数据应迁移到稳定 key");
 }
 
+// === Scenario E: local computation must not overwrite the server-confirmed baseline on recovery ===
+for (const baselineStorage of ["localStorage", "mirror"]) {
+  const ls = new Map();
+  const files = new Map();
+  const localHashes = JSON.stringify({ "notes/a.md": { hash: "unsynced-local", mtime: 3, size: 4 } });
+  const confirmedHashes = JSON.stringify({ "notes/a.md": "server-confirmed" });
+  files.set(MIRROR_PATH, localHashes);
+  if (baselineStorage === "localStorage") {
+    ls.set("fns-syncHashMap", confirmedHashes);
+  } else {
+    files.set(".obsidian/plugins/fast-note-sync/syncHashMap.json", confirmedHashes);
+  }
+  const mgr = new FileHashManager(makeFakePlugin(ls, files));
+  await mgr.initialize();
+  assert.equal(mgr.getValidHash("notes/a.md", 3, 4), "unsynced-local");
+  assert.equal(mgr.getPathHash("notes/a.md"), "server-confirmed", `${baselineStorage} baseline must survive local cache restoration`);
+  assert.equal(JSON.parse(ls.get("fns-syncHashMap"))["notes/a.md"], "server-confirmed");
+  mgr.flush();
+}
+
 console.log("file-mirror-restore.test.mjs: all scenarios passed");

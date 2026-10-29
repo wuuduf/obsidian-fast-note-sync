@@ -1,3 +1,4 @@
+import { sourceTraceId } from "../utils/diagnostics";
 import { TFile, TAbstractFile, normalizePath, Platform } from "obsidian";
 
 import { ReceiveFileSyncUpdateMessage, FileUploadMessage, FileSyncChunkDownloadMessage, FileDownloadSession, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "../utils/types";
@@ -13,7 +14,26 @@ let currentDownloadBufferBytes = 0
 const MAX_DOWNLOAD_BUFFER_BYTES = 20 * 1024 * 1024
 
 // 上传中的文件追踪，用于删除时取消上传
-const activeUploadsMap = new Map<string, { cancelled: boolean }>()
+const activeUploadsMap = new Map<string, { cancelled: boolean; context: string }>()
+
+type FileCompletionOwner = { pageIndex?: number; context: string; traceId?: string };
+const pendingFileRePush = new Map<string, FileCompletionOwner[]>();
+const rePushKey = (context: string, path: string) => JSON.stringify([context, normalizePath(path)]);
+export const clearPendingFileRePush = () => pendingFileRePush.clear();
+const ownsCurrentContext = (plugin: FastSync, context?: string) => context === undefined || context === (plugin.syncState.activeSyncContext ?? "");
+const prunePendingFileRePush = (plugin: FastSync) => {
+  const current = plugin.syncState.activeSyncContext ?? "";
+  for (const [key, owners] of pendingFileRePush) if (owners[0]?.context !== current) pendingFileRePush.delete(key);
+};
+const reportFileCompletion = (plugin: FastSync, session: Pick<FileDownloadSession, "pageIndex" | "context" | "completionOwners" | "completionState">, failed = false) => {
+  if (session.completionState?.reported) return;
+  if (session.completionState) session.completionState.reported = true;
+  if (failed && ownsCurrentContext(plugin, session.context)) plugin.fileSyncTasks.failed++;
+  const owners = session.completionOwners;
+  if (owners?.length) {
+    for (const owner of owners) plugin.recordSyncCompleted('file', owner.pageIndex, owner.context);
+  } else plugin.recordSyncCompleted('file', session.pageIndex, session.context);
+};
 
 // 全局中止信号，用于插件卸载时
 export let isPluginUnloading = false;
@@ -102,10 +122,9 @@ const formatDownloadError = (e: unknown) => {
 // completion detection / page ACK unchanged), so failures aren't surfaced as success in the status bar
 const cleanupFileDownloadSession = async (plugin: FastSync, session: FileDownloadSession, failed = false) => {
   releaseSessionMemory(session)
-  plugin.fileDownloadSessions.delete(session.sessionId)
+  for (const [key, current] of plugin.fileDownloadSessions) if (current === session) plugin.fileDownloadSessions.delete(key)
   if (session.tempDir) await clearTempChunksDir(plugin, session.sessionId)
-  if (failed) plugin.fileSyncTasks.failed++
-  plugin.recordSyncCompleted('file', session.pageIndex)
+  reportFileCompletion(plugin, session, failed)
 }
 
 const failFileDownloadSession = async (plugin: FastSync, session: FileDownloadSession, message: string, releaseSlot = true) => {
@@ -116,6 +135,8 @@ const failFileDownloadSession = async (plugin: FastSync, session: FileDownloadSe
     type: 'receive',
     action: 'FileDownload',
     path: session.path,
+    traceId: session.traceId,
+    vault: session.vault,
     status: 'error',
     progress: session.totalChunks === 0 ? 0 : Math.floor((completedCount / session.totalChunks) * 100),
     message
@@ -164,6 +185,7 @@ const fallbackFileDownloadSessionToMemory = async (plugin: FastSync, session: Fi
  * 清理所有残留的临时目录
  */
 export const clearAllTempChunks = async (plugin: FastSync) => {
+  clearPendingFileRePush();
   const path = getTempChunksDir(plugin)
   if (await plugin.app.vault.adapter.exists(path)) {
     dump(`Cleaning all temp chunks: ${path}`)
@@ -182,6 +204,7 @@ export const clearUploadQueue = () => {
  * 中止所有进行中的文件操作 (插件卸载时调用)
  */
 export const abortAllFileOperations = () => {
+  clearPendingFileRePush();
   isPluginUnloading = true;
   for (const upload of activeUploadsMap.values()) {
     upload.cancelled = true;
@@ -193,6 +216,7 @@ export const abortAllFileOperations = () => {
  * 重置文件操作状态 (插件加载时调用)
  */
 export const resetFileOperations = () => {
+  clearPendingFileRePush();
   isPluginUnloading = false;
 }
 
@@ -448,15 +472,18 @@ export const fileRename = async function (file: TAbstractFile, oldfile: string, 
  * 接收服务端文件上传指令 (FileUpload)
  */
 export const receiveFileUpload = async function (data: FileUploadMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
 
   if (plugin.settings.readonlySyncEnabled) {
     dump(`Read-only mode: Intercepted file upload request for ${data.path}`)
-    plugin.recordSyncCompleted('file', data.pageIndex)
+    plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
     return
   }
   if (isPathExcluded(data.path, plugin)) {
-    plugin.recordSyncCompleted('file', data.pageIndex)
+    plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
     return
   }
   dump(`Receive file need upload (queued): `, data.path, data.sessionId)
@@ -465,13 +492,13 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
   const file = plugin.app.vault.getFileByPath(normalizePath(data.path))
   if (!file) {
     dump(`File not found for upload: ${data.path} `)
-    plugin.recordSyncCompleted('file', data.pageIndex)
+    plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
     return
   }
   if (isLargeBinarySyncRisk(file.stat.size, plugin)) {
     dump(`Skip file upload for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, file.stat.size)
     notifyLargeFileSkipped(plugin, data.path, file.stat.size, `Fast Note Sync skipped large file upload: ${data.path}`)
-    plugin.recordSyncCompleted('file', data.pageIndex)
+    plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
     return
   }
 
@@ -492,7 +519,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
 
   const runUpload = async () => {
     // 标记该路径进入活跃上传状态
-    activeUploadsMap.set(data.path, { cancelled: false });
+    activeUploadsMap.set(data.path, { cancelled: false, context: sourceContext });
     await plugin.concurrencyLimiter.waitForSlot(data.path, false, 10) // 优先级设为 10，优先处理上传
 
     // 断点续传 checkpoint key，提升到 try 外以便 catch 块中也能清除
@@ -512,7 +539,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       if (!content) {
         plugin.totalChunksToUpload -= actualTotalChunks
         plugin.concurrencyLimiter.releaseSlot(data.path)
-        plugin.recordSyncCompleted('file', data.pageIndex)
+        plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
         return;
       }
 
@@ -623,6 +650,8 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
               type: 'send',
               action: 'FileUpload',
               path: data.path,
+              traceId,
+              vault: sourceVault,
               status: isLastChunk ? 'success' : 'pending',
               progress: currentProgress
             });
@@ -641,6 +670,8 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
             type: 'send',
             action: 'FileUpload',
             path: data.path,
+            traceId,
+            vault: sourceVault,
             status: 'pending',
             message: '连接已断开，等待重连后续传'
           });
@@ -653,7 +684,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
           // Clear checkpoint on cancel to avoid stale session reuse
           try { plugin.app.saveLocalStorage(checkpointKey, null) } catch { /* ignore */ }
           plugin.concurrencyLimiter.releaseSlot(data.path)
-          plugin.recordSyncCompleted('file', data.pageIndex)
+          plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
           return;
         }
 
@@ -710,7 +741,7 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
       try { plugin.app.saveLocalStorage(checkpointKey, null) } catch { /* ignore */ }
       plugin.totalChunksToUpload -= actualTotalChunks
       plugin.concurrencyLimiter.releaseSlot(data.path);
-      plugin.recordSyncCompleted('file', data.pageIndex)
+      plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
     } finally {
       // 任务结束（完成或取消/失败），移除活跃标记
       activeUploadsMap.delete(data.path);
@@ -726,19 +757,38 @@ export const receiveFileUpload = async function (data: FileUploadMessage, plugin
  * 接收服务端文件更新通知 (FileSyncUpdate)
  */
 export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdateMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
+  prunePendingFileRePush(plugin);
+  if (!ownsCurrentContext(plugin, sourceContext)) return;
+  const pendingKey = rePushKey(sourceContext, data.path);
+  const deferred = pendingFileRePush.get(pendingKey);
+  pendingFileRePush.delete(pendingKey);
+  const completion = {
+    context: sourceContext,
+    traceId,
+    vault: sourceVault,
+    pageIndex: deferred?.[0]?.pageIndex ?? data.pageIndex,
+    completionOwners: deferred ? [
+      ...(data.pageIndex !== undefined ? [{ pageIndex: data.pageIndex, context: sourceContext }] : []),
+      ...deferred,
+    ] : undefined,
+    completionState: { reported: false },
+  };
 
   // 服务端推送说明该路径已有新内容，清除可能残留的 deleteAck pending 防止 Ack 删除新 hash
   // Server push means path has new content; clear stale deleteAck pending to protect newly-written hash
   plugin.pendingFileDeleteAcks.delete(data.path)
   if (isPathExcluded(data.path, plugin)) {
-    plugin.recordSyncCompleted('file', data.pageIndex);
+    reportFileCompletion(plugin, completion);
     return
   }
   if (isLargeBinarySyncRisk(data.size, plugin)) {
     dump(`Skip file download for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, data.size)
     notifyLargeFileSkipped(plugin, data.path, data.size, `Fast Note Sync skipped large file download: ${data.path}`)
-    plugin.recordSyncCompleted('file', data.pageIndex);
+    reportFileCompletion(plugin, completion);
     return
   }
 
@@ -749,30 +799,34 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file download: ${data.path}`);
-        plugin.recordSyncCompleted('file', data.pageIndex);
+        reportFileCompletion(plugin, completion);
         return;
       }
     } else {
       // 未开启类型限制：由于启用了云预览，跳过所有附件下载
       dump(`Cloud Preview: Skipping all file downloads: ${data.path}`);
-      plugin.recordSyncCompleted('file', data.pageIndex);
+      reportFileCompletion(plugin, completion);
       return;
     }
   }
 
   // 等待并发槽位，防止大量并发下载导致内存耗尽
   const slotKey = `download_${data.path}`
-  await plugin.concurrencyLimiter.waitForSlot(slotKey, false, -10) // 优先级设为 -10，延后处理下载
+  const tempKey = `temp_${data.path}`
+  let tempSession: FileDownloadSession | undefined;
 
   try {
+    await plugin.concurrencyLimiter.waitForSlot(slotKey, false, -10) // 优先级设为 -10，延后处理下载
+    if (!ownsCurrentContext(plugin, sourceContext)) { plugin.concurrencyLimiter.releaseSlot(slotKey); return; }
     // 下载内存缓冲控制：如果当前内存中待写盘的分块过多，由于下载是异步触发的，此处等待
     while (currentDownloadBufferBytes > MAX_DOWNLOAD_BUFFER_BYTES) {
       await sleep(200);
     }
+    if (!ownsCurrentContext(plugin, sourceContext)) { plugin.concurrencyLimiter.releaseSlot(slotKey); return; }
 
     dump(`Receive file sync update(download): `, data.path)
-    const tempKey = `temp_${data.path}`
-    const tempSession: FileDownloadSession = {
+    tempSession = {
+      ...completion,
       path: data.path,
       contentHash: data.contentHash,
       ctime: data.ctime,
@@ -781,18 +835,19 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
       sessionId: "",
       totalChunks: 0,
       size: data.size,
-      pageIndex: data.pageIndex,
       initialSlotKey: slotKey,
       ...createDownloadStorage(plugin, `init_${data.pathHash}`, data.size),
     }
     plugin.fileDownloadSessions.set(tempKey, tempSession)
 
     const requestData = {
+      context: sourceContext,
+      traceId,
       vault: plugin.settings.vault,
       path: data.path,
       pathHash: data.pathHash,
     }
-    void plugin.websocket.SendMessage("FileChunkDownload", requestData)
+    await plugin.websocket.SendMessage("FileChunkDownload", requestData)
     plugin.totalFilesToDownload++
 
     // 更新同步时间
@@ -802,7 +857,9 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
     }
   } catch (e) {
     plugin.concurrencyLimiter.releaseSlot(slotKey)
-    throw e;
+    if (tempSession) await cleanupFileDownloadSession(plugin, tempSession, true);
+    else reportFileCompletion(plugin, completion, true);
+    SyncLogManager.getInstance().addLog('receive', 'FileDownload', formatDownloadError(e), 'error', data.path, sourceVault, { traceId });
   }
 }
 
@@ -810,10 +867,13 @@ export const receiveFileSyncUpdate = async function (data: ReceiveFileSyncUpdate
  * 接收服务端文件删除通知
  */
 export const receiveFileSyncDelete = async function (data: ReceivePathMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
 
   if (isPathExcluded(data.path, plugin)) {
-    plugin.recordSyncCompleted('file', data.pageIndex);
+    plugin.recordSyncCompleted('file', data.pageIndex, sourceContext);
     return
   }
 
@@ -822,12 +882,12 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file delete: ${data.path}`);
-        plugin.recordSyncCompleted('file', data.pageIndex);
+        plugin.recordSyncCompleted('file', data.pageIndex, sourceContext);
         return;
       }
     } else {
       dump(`Cloud Preview: Skipping all file deletes: ${data.path}`);
-      plugin.recordSyncCompleted('file', data.pageIndex);
+      plugin.recordSyncCompleted('file', data.pageIndex, sourceContext);
       return;
     }
   }
@@ -860,21 +920,24 @@ export const receiveFileSyncDelete = async function (data: ReceivePathMessage, p
     }
   }, { maxRetries: 5, retryInterval: 100 }).catch(e => {
     dumpError(`[FastSync] Failed to receiveFileSyncDelete: ${normalizedPath}`, e);
-    SyncLogManager.getInstance().addLog('receive', 'FileDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
-    plugin.fileSyncTasks.failed++
+    SyncLogManager.getInstance().addLog('receive', 'FileDelete', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
+    if (ownsCurrentContext(plugin, sourceContext)) plugin.fileSyncTasks.failed++
   });
 
-  plugin.recordSyncCompleted('file', data.pageIndex)
+  plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
 }
 
 /**
  * 接收服务端文件元数据(mtime)更新通知
  */
 export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
 
   if (isPathExcluded(data.path, plugin)) {
-    plugin.recordSyncCompleted('file', data.pageIndex);
+    plugin.recordSyncCompleted('file', data.pageIndex, sourceContext);
     return
   }
 
@@ -883,12 +946,12 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
       const ext = data.path.substring(data.path.lastIndexOf(".")).toLowerCase();
       if (FileCloudPreview.isRestrictedType(ext)) {
         dump(`Cloud Preview: Skipping restricted file mtime update: ${data.path}`);
-        plugin.recordSyncCompleted('file', data.pageIndex);
+        plugin.recordSyncCompleted('file', data.pageIndex, sourceContext);
         return;
       }
     } else {
       dump(`Cloud Preview: Skipping all file mtime updates: ${data.path}`);
-      plugin.recordSyncCompleted('file', data.pageIndex);
+      plugin.recordSyncCompleted('file', data.pageIndex, sourceContext);
       return;
     }
   }
@@ -925,23 +988,27 @@ export const receiveFileSyncMtime = async function (data: ReceiveMtimeMessage, p
     }
   }, { maxRetries: 5, retryInterval: 100 }).catch(e => {
     dumpError(`[FastSync] Failed to receiveFileSyncMtime: ${normalizedPath}`, e);
-    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileMtime')) {
-      SyncLogManager.getInstance().addLog('receive', 'FileMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileMtime', traceId, sourceVault)) {
+      SyncLogManager.getInstance().addLog('receive', 'FileMtime', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
     }
-    plugin.fileSyncTasks.failed++
+    if (ownsCurrentContext(plugin, sourceContext)) plugin.fileSyncTasks.failed++
   });
 
   // FileSyncMtime 表示文件已在服务端存在（无需上传），释放 fileModify 中获取的并发槽位
   // FileSyncMtime indicates file already exists on server (no upload needed), release slot acquired by fileModify
   if (data.path) plugin.concurrencyLimiter.releaseSlot(data.path)
-  plugin.recordSyncCompleted('file', data.pageIndex)
+  plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
 }
 
 /**
  * 接收服务端分片下载响应 (FileSyncChunkDownload)
  */
 export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkDownloadMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
+  if (!ownsCurrentContext(plugin, sourceContext)) return;
 
   dump(`Receive file chunk download: `, data.path, data.sessionId, `totalChunks: ${data.totalChunks}`)
 
@@ -961,8 +1028,13 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
   const tempSession = plugin.fileDownloadSessions.get(tempKey)
   let session: FileDownloadSession
 
-  if (tempSession) {
+  if (tempSession && (tempSession.context === undefined || tempSession.context === sourceContext)) {
     session = {
+      context: tempSession.context ?? sourceContext,
+      traceId: tempSession.traceId || traceId,
+      vault: tempSession.vault || sourceVault,
+      completionOwners: tempSession.completionOwners,
+      completionState: tempSession.completionState,
       path: data.path,
       contentHash: data.contentHash,
       ctime: data.ctime,
@@ -979,6 +1051,10 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
     plugin.fileDownloadSessions.delete(tempKey)
   } else {
     session = {
+      context: sourceContext,
+      traceId,
+      vault: sourceVault,
+      completionState: { reported: false },
       path: data.path,
       contentHash: data.contentHash,
       ctime: data.ctime,
@@ -1024,6 +1100,8 @@ export const receiveFileSyncChunkDownload = async function (data: FileSyncChunkD
     type: 'receive',
     action: 'FileDownload',
     path: data.path,
+    traceId,
+    vault: sourceVault,
     status: isTotalChunksZero ? 'success' : 'pending',
     progress: isTotalChunksZero ? 100 : 0
   });
@@ -1133,6 +1211,10 @@ export const handleFileChunkDownload = async function (buf: ArrayBuffer | Blob, 
     });
     return
   }
+  if (!ownsCurrentContext(plugin, session.context)) {
+    await cleanupFileDownloadSession(plugin, session);
+    return;
+  }
 
   try {
     if (chunkIndex >= session.totalChunks) {
@@ -1187,6 +1269,8 @@ export const handleFileChunkDownload = async function (buf: ArrayBuffer | Blob, 
       type: 'receive',
       action: 'FileDownload',
       path: session.path,
+      traceId: session.traceId,
+      vault: session.vault,
       status: completedCount === session.totalChunks ? 'success' : 'pending',
       progress: session.totalChunks === 0 ? 100 : Math.floor((completedCount / session.totalChunks) * 100)
     });
@@ -1203,11 +1287,18 @@ export const handleFileChunkDownload = async function (buf: ArrayBuffer | Blob, 
 /**
  * 接收服务端文件重命名通知
  */
-export const receiveFileSyncRename = async function (data: { oldPath: string; path: string; mtime?: number; ctime?: number; contentHash?: string; lastTime?: number; size?: number; pathHash?: string; pageIndex?: number }, plugin: FastSync) {
+export const receiveFileSyncRename = async function (data: { traceId?: string; context?: string; oldPath: string; path: string; mtime?: number; ctime?: number; contentHash?: string; lastTime?: number; size?: number; pathHash?: string; pageIndex?: number }, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
+  prunePendingFileRePush(plugin);
+  if (!ownsCurrentContext(plugin, sourceContext)) return;
+  const owner = { context: sourceContext, pageIndex: data.pageIndex, traceId };
+  let deferredRePush = false;
 
     if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
-    plugin.recordSyncCompleted('file', data.pageIndex);
+    plugin.recordSyncCompleted('file', data.pageIndex, sourceContext);
     return
   }
 
@@ -1220,7 +1311,7 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
   // 检查本地是否存在该旧路径的活跃下载会话
   let downloadingSession: FileDownloadSession | undefined
   for (const sess of plugin.fileDownloadSessions.values()) {
-    if (normalizePath(sess.path) === normalizedOldPath) {
+    if (normalizePath(sess.path) === normalizedOldPath && ownsCurrentContext(plugin, sess.context)) {
       downloadingSession = sess
       break
     }
@@ -1234,7 +1325,8 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
     }
     // Session redirected, bypass the rename execution and skip RePush
     // 会话已成功重定向，直接跳过重命名执行和 RePush
-    plugin.recordSyncCompleted('file', data.pageIndex)
+    downloadingSession.completionOwners ??= [{ context: downloadingSession.context ?? sourceContext, pageIndex: downloadingSession.pageIndex }];
+    downloadingSession.completionOwners.push(owner);
     return
   }
 
@@ -1290,40 +1382,52 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
         if (sizeMatch) {
           if (isLargeBinarySyncRisk(targetFile.stat.size, plugin)) {
             dump(`Skip rename target hash for large attachment (${describeBinarySyncLimit()} limit): ${data.path}`, targetFile.stat.size)
-            plugin.recordSyncCompleted('file', data.pageIndex)
             return
           }
           const localContentHash = await hashFileAsync(plugin.app, targetFile.path)
           if (localContentHash === data.contentHash) {
             dump(`Target attachment already exists and matches hash, skipping rename: ${data.path}`)
             plugin.fileHashManager.setFileHash(data.path, data.contentHash, targetFile.stat.mtime, targetFile.stat.size)
-            plugin.recordSyncCompleted('file', data.pageIndex)
             return
           }
         }
       }
 
       dump(`Local attachment not found for rename, requesting RePush: ${data.oldPath} -> ${data.path}`)
+      if (!ownsCurrentContext(plugin, sourceContext)) return;
+      const pendingKey = rePushKey(sourceContext, data.path);
+      const owners = pendingFileRePush.get(pendingKey) ?? [];
+      deferredRePush = true;
+      // An identical retransmitted rename must not create another completion.
+      if (owners.some((pending) => pending.pageIndex === owner.pageIndex)) return;
+      owners.push(owner);
+      pendingFileRePush.set(pendingKey, owners);
       const rePushData = {
+        context: sourceContext,
+        traceId,
         vault: plugin.settings.vault,
         path: data.path,
         pathHash: data.pathHash,
       }
-      void plugin.websocket.SendMessage("FileRePush", rePushData)
-      if (data.contentHash) {
-        const targetFile = plugin.app.vault.getFileByPath(normalizePath(data.path))
-        plugin.fileHashManager.setFileHash(data.path, data.contentHash, targetFile instanceof TFile ? targetFile.stat.mtime : 0, targetFile instanceof TFile ? targetFile.stat.size : 0)
+      try {
+        await plugin.websocket.SendMessage("FileRePush", rePushData)
+      } catch (error) {
+        const retained = (pendingFileRePush.get(pendingKey) ?? []).filter((pending) => pending !== owner);
+        if (retained.length) pendingFileRePush.set(pendingKey, retained);
+        else pendingFileRePush.delete(pendingKey);
+        deferredRePush = false;
+        throw error;
       }
     }
   }, { maxRetries: 10, retryInterval: 100 }).catch(e => {
     dumpError(`[FastSync] Failed to receiveFileSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e);
-    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileRename')) {
-      SyncLogManager.getInstance().addLog('receive', 'FileRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FileRename', traceId, sourceVault)) {
+      SyncLogManager.getInstance().addLog('receive', 'FileRename', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
     }
-    plugin.fileSyncTasks.failed++
+    if (ownsCurrentContext(plugin, sourceContext)) plugin.fileSyncTasks.failed++
   });
 
-  plugin.recordSyncCompleted('file', data.pageIndex)
+  if (!deferredRePush) plugin.recordSyncCompleted('file', data.pageIndex, sourceContext)
 }
 
 /**
@@ -1332,6 +1436,7 @@ export const receiveFileSyncRename = async function (data: { oldPath: string; pa
 const handleFileChunkDownloadComplete = async function (session: FileDownloadSession, plugin: FastSync) {
   const slotKey = session.initialSlotKey || `download_${session.path}`;
   try {
+    if (!ownsCurrentContext(plugin, session.context)) { await cleanupFileDownloadSession(plugin, session); return; }
     if (isLargeBinarySyncRisk(session.size, plugin)) {
       dump(`Skip assembling large downloaded attachment (${describeBinarySyncLimit()} limit): ${session.path}`, session.size)
       await cleanupFileDownloadSession(plugin, session)
@@ -1372,6 +1477,7 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
 
     const normalizedPath = normalizePath(session.path)
     await plugin.lockManager.withLock(normalizedPath, async () => {
+      if (!ownsCurrentContext(plugin, session.context)) return;
       plugin.addIgnoredFile(normalizedPath)
       try {
         const file = plugin.app.vault.getFileByPath(normalizedPath)
@@ -1422,17 +1528,21 @@ const handleFileChunkDownloadComplete = async function (session: FileDownloadSes
 
     plugin.fileDownloadSessions.delete(session.sessionId)
     if (session.tempDir) await clearTempChunksDir(plugin, session.sessionId)
-    plugin.downloadedFilesCount++
-    plugin.progressTracker.recordDownloadComplete('file');
-    plugin.recordSyncCompleted('file', session.pageIndex)
+    if (ownsCurrentContext(plugin, session.context)) {
+      plugin.downloadedFilesCount++
+      plugin.progressTracker.recordDownloadComplete('file');
+    }
+    reportFileCompletion(plugin, session)
   } catch (e) {
     dumpError(`Error completing file download for ${session.path}`, e)
-    if (!checkAndNotifyCaseConflict(e, session.path, plugin, 'FileDownload')) {
+    if (!checkAndNotifyCaseConflict(e, session.path, plugin, 'FileDownload', session.traceId, session.vault)) {
       SyncLogManager.getInstance().addOrUpdateLog({
         id: session.sessionId,
         type: 'receive',
         action: 'FileDownload',
         path: session.path,
+        traceId: session.traceId,
+        vault: session.vault,
         status: 'error',
         progress: session.totalChunks === 0 ? 0 : Math.floor((getCompletedDownloadChunks(session) / session.totalChunks) * 100),
         message: `Failed to complete download: ${formatDownloadError(e)}`
@@ -1464,7 +1574,9 @@ export const receiveFileRenameAck = function (data: { lastTime?: number }, plugi
 
 // 收到 FileUploadAck，将 pending hash 转移到正式 hashManager 并更新 lastFileSyncTime
 // Receive FileUploadAck, move pending hash to formal hashManager and update lastFileSyncTime
-export const receiveFileUploadAck = function (data: { lastTime?: number; path?: string; pathHash?: string }, plugin: FastSync) {
+export const receiveFileUploadAck = function (data: { traceId?: string; context?: string; lastTime?: number; path?: string; pathHash?: string }, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+
   // 服务端确认上传成功，将 pending hash 转移到正式 hashManager
   // Server confirmed upload success, move pending hash to formal hashManager
   if (data.path) {
@@ -1494,7 +1606,7 @@ export const receiveFileUploadAck = function (data: { lastTime?: number; path?: 
   // user-initiated edit triggered this upload Ack, falls back to the legacy path
   const pushPageIndex = data.path ? plugin.syncState.pendingFilePushPageIndex.get(data.path) : undefined;
   if (data.path) plugin.syncState.pendingFilePushPageIndex.delete(data.path)
-  plugin.recordSyncCompleted('file', pushPageIndex)
+  plugin.recordSyncCompleted('file', pushPageIndex, sourceContext)
 }
 
 // 收到 FileDeleteAck，仅当路径仍在 pending set 中时才从 hashManager 移除
@@ -1523,8 +1635,10 @@ export const receiveFileUploadSessionNotFound = function (sessionId: string, plu
       active.cancelled = true
     }
     plugin.concurrencyLimiter.releaseSlot(path)
-    plugin.fileSyncTasks.failed++
-    plugin.fileSyncTasks.completed++
+    if (active && ownsCurrentContext(plugin, active.context)) {
+      plugin.fileSyncTasks.failed++
+      plugin.recordSyncCompleted('file', undefined, active.context)
+    }
     dump(`FileUploadSessionNotFound: Cleaned active state and completed task for path: ${path} (${sessionId})`)
   }
 }

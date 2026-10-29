@@ -1224,7 +1224,9 @@ export const checkAndNotifyCaseConflict = function (
   error: unknown,
   relativePath: string,
   plugin: FastSync,
-  typeSync: 'NoteModify' | 'NoteMtime' | 'NoteRename' | 'FileDownload' | 'FileMtime' | 'FileRename' | 'FolderModify' | 'FolderRename' | 'ConfigModify' | 'ConfigMtime'
+  typeSync: 'NoteModify' | 'NoteMtime' | 'NoteRename' | 'FileDownload' | 'FileMtime' | 'FileRename' | 'FolderModify' | 'FolderRename' | 'ConfigModify' | 'ConfigMtime',
+  traceId?: string,
+  sourceVault = plugin.settings.vault
 ): boolean {
   const errorMessage = error instanceof Error ? error.message : String(error);
   
@@ -1238,7 +1240,7 @@ export const checkAndNotifyCaseConflict = function (
       const typeLabel = typeSync.startsWith('File') ? $('ui.log.category_attachment') : typeSync.startsWith('Config') ? $('ui.log.category_config') : typeSync.startsWith('Folder') ? $('ui.log.category_folder') : $('ui.log.category_note');
       const noticeMsg = $('ui.status.case_conflict.title', { type: typeLabel, expectedPath: normalizedPath, actualPath: matchedFile.path });
       showSyncNotice(noticeMsg, 15000); // 提示持续 15 秒 / Duration of 15 seconds
-      SyncLogManager.getInstance().addLog('receive', typeSync, $('ui.status.case_conflict.log', { actualPath: matchedFile.path }), 'error', relativePath);
+      SyncLogManager.getInstance().addLog('receive', typeSync, $('ui.status.case_conflict.log', { actualPath: matchedFile.path }), 'error', relativePath, sourceVault, { traceId });
       return true;
     }
   }

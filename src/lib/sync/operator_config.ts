@@ -1,3 +1,4 @@
+import { sourceTraceId } from "../utils/diagnostics";
 import { normalizePath, App } from "obsidian";
 
 import { hashContent, dump, dumpError, configIsPathExcluded, getSafeCtime, isPathInConfigSyncDirs, showSyncNotice, isInWhitelist, hashFileAsync, checkAndNotifyCaseConflict } from "../utils/helpers";
@@ -145,21 +146,24 @@ export const configDelete = async function (path: string, plugin: FastSync, even
 }
 
 export const receiveConfigSyncModify = async function (data: ReceiveMessage, plugin: FastSync) {
+    const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+    const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+    const sourceVault = plugin.settings.vault;
     if (plugin.settings.configSyncEnabled == false) return
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
 
     const isVirtual = data.path.startsWith(plugin.localStorageManager.syncPathPrefix)
 
     if (configIsPathExcluded(data.path, plugin)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
     if (plugin.ignoredConfigFiles.has(data.path)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
 
@@ -172,10 +176,10 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
                 if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastConfigSyncTime"))) {
                     plugin.localStorageManager.setMetadata("lastConfigSyncTime", data.lastTime)
                 }
-                plugin.recordSyncCompleted('setting', data.pageIndex)
+                plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
                 return
             }
-            plugin.recordSyncCompleted('setting', data.pageIndex)
+            plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
             return
         }
 
@@ -214,19 +218,19 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
 
         if (hasPendingLocalEdit || hasDivergedSinceLastSync) {
             dump(`[FastSync] Skip config overwrite, local unsynced edit detected: ${filePath}`)
-            SyncLogManager.getInstance().addLog('receive', 'ConfigModifyConflict', `本地配置存在未同步的改动，跳过服务端覆盖，等待下一轮同步处理冲突: ${filePath}`, 'cancelled', data.path)
+            SyncLogManager.getInstance().addLog('receive', 'ConfigModifyConflict', `本地配置存在未同步的改动，跳过服务端覆盖，等待下一轮同步处理冲突: ${filePath}`, 'cancelled', data.path, sourceVault, { traceId })
             plugin.removeIgnoredConfigFile(data.path)
-            plugin.recordSyncCompleted('setting', data.pageIndex)
+            plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
             return
         }
 
         await plugin.app.vault.adapter.write(filePath, data.content, { ...(data.ctime > 0 && { ctime: data.ctime }), ...(data.mtime > 0 && { mtime: data.mtime }) })
     } catch (e) {
         dumpError("[writeConfigFile] error:", e)
-        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigModify')) {
-            SyncLogManager.getInstance().addLog('receive', 'ConfigModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigModify', traceId, sourceVault)) {
+            SyncLogManager.getInstance().addLog('receive', 'ConfigModify', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
         }
-        plugin.configSyncTasks.failed++
+        if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.configSyncTasks.failed++
     }
 
     await configReload(data.path, plugin, false, data.content)
@@ -256,25 +260,27 @@ export const receiveConfigSyncModify = async function (data: ReceiveMessage, plu
         plugin.lastSyncMtime.set(data.path, mtime)
     }
 
-    plugin.recordSyncCompleted('setting', data.pageIndex)
+    plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
 }
 
 export const receiveConfigUpload = async function (data: ReceivePathMessage, plugin: FastSync) {
+    const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+
     if (plugin.settings.configSyncEnabled == false) return;
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
 
     const isVirtual = data.path.startsWith(plugin.localStorageManager.syncPathPrefix)
 
     if (configIsPathExcluded(data.path, plugin)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
     if (isVirtual) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
 
@@ -302,13 +308,13 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
         }
     } catch (error) {
         dumpError("读取配置文件出错:", error);
-        plugin.configSyncTasks.failed++;
-        plugin.recordSyncCompleted('setting', data.pageIndex);
+        if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.configSyncTasks.failed++;
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext);
         return
     }
 
     if (!contentBuf || mtime === 0) {
-        plugin.recordSyncCompleted('setting', data.pageIndex);
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext);
         return;
     }
 
@@ -337,23 +343,26 @@ export const receiveConfigUpload = async function (data: ReceivePathMessage, plu
     await plugin.concurrencyLimiter.waitForSlot(data.path)
     void plugin.websocket.SendMessage("SettingModify", sendData, undefined, function () {
         plugin.removeIgnoredConfigFile(data.path);
-    }, (data as ReceivePathMessage & { context?: string }).context);
+    }, sourceContext);
 };
 
 export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage, plugin: FastSync) {
+    const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+    const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+    const sourceVault = plugin.settings.vault;
     if (plugin.settings.configSyncEnabled == false) return
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
 
     if (configIsPathExcluded(data.path, plugin)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
     if (plugin.ignoredConfigFiles.has(data.path)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
 
@@ -366,10 +375,10 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
         }
     } catch (e) {
         dumpError("[updateConfigFileTime] error:", e)
-        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigMtime')) {
-            SyncLogManager.getInstance().addLog('receive', 'ConfigMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'ConfigMtime', traceId, sourceVault)) {
+            SyncLogManager.getInstance().addLog('receive', 'ConfigMtime', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
         }
-        plugin.configSyncTasks.failed++
+        if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.configSyncTasks.failed++
     }
     plugin.removeIgnoredConfigFile(data.path)
 
@@ -378,23 +387,26 @@ export const receiveConfigSyncMtime = async function (data: ReceiveMtimeMessage,
         plugin.localStorageManager.setMetadata("lastConfigSyncTime", data.lastTime)
     }
 
-    plugin.recordSyncCompleted('setting', data.pageIndex)
+    plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
 }
 
-export const receiveConfigSyncDelete = async function (data: { path: string, lastTime?: number, pageIndex?: number }, plugin: FastSync) {
+export const receiveConfigSyncDelete = async function (data: { traceId?: string; context?: string; path: string, lastTime?: number, pageIndex?: number }, plugin: FastSync) {
+    const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+    const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+    const sourceVault = plugin.settings.vault;
     if (plugin.settings.configSyncEnabled == false) return
 
     if (!isPathInConfigSyncDirs(data.path, plugin)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
 
     if (configIsPathExcluded(data.path, plugin)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
     if (plugin.ignoredConfigFiles.has(data.path)) {
-        plugin.recordSyncCompleted('setting', data.pageIndex)
+        plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
         return
     }
 
@@ -414,8 +426,8 @@ export const receiveConfigSyncDelete = async function (data: { path: string, las
         }
     } catch (e) {
         dumpError("[receiveConfigSyncDelete] error:", e)
-        SyncLogManager.getInstance().addLog('receive', 'ConfigDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
-        plugin.configSyncTasks.failed++
+        SyncLogManager.getInstance().addLog('receive', 'ConfigDelete', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
+        if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.configSyncTasks.failed++
     }
 
     // 更新 ConfigManager 的文件状态
@@ -434,7 +446,7 @@ export const receiveConfigSyncDelete = async function (data: { path: string, las
     }
     if (data.path) { plugin.concurrencyLimiter.releaseSlot(data.path) }
 
-    plugin.recordSyncCompleted('setting', data.pageIndex)
+    plugin.recordSyncCompleted('setting', data.pageIndex, sourceContext)
 }
 
 export const receiveConfigSyncEnd = async function (data: unknown, plugin: FastSync) {
@@ -471,7 +483,8 @@ export const receiveConfigSyncClear = async function (data: unknown, plugin: Fas
  * 收到 SettingModifyAck，将 pending hash 转移到正式 configHashManager 并更新 lastConfigSyncTime
  * Receive SettingModifyAck, move pending hash to formal configHashManager and update lastConfigSyncTime
  */
-export const receiveConfigModifyAck = async function (data: { lastTime?: number; path?: string }, plugin: FastSync) {
+export const receiveConfigModifyAck = async function (data: { traceId?: string; context?: string; lastTime?: number; path?: string }, plugin: FastSync) {
+    const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
     if (data.path) {
         const contentHash = plugin.pendingConfigModifies.get(data.path)
         if (contentHash !== undefined) {
@@ -503,7 +516,7 @@ export const receiveConfigModifyAck = async function (data: { lastTime?: number;
     // edit triggered this Ack, falls back to the legacy path
     const pushPageIndex = data.path ? plugin.syncState.pendingConfigPushPageIndex.get(data.path) : undefined;
     if (data.path) plugin.syncState.pendingConfigPushPageIndex.delete(data.path)
-    plugin.recordSyncCompleted('setting', pushPageIndex)
+    plugin.recordSyncCompleted('setting', pushPageIndex, sourceContext)
 }
 
 /**

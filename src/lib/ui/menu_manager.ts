@@ -233,6 +233,12 @@ export class MenuManager {
     })
 
     this.plugin.addCommand({
+      id: "retry-current-note-blog-publish",
+      name: "重试当前笔记博客发布",
+      callback: () => { void this.plugin.blogPublisher.retryCurrentNote(); },
+    })
+
+    this.plugin.addCommand({
       id: "publish-blog-vault",
       name: $("ui.blog.command_publish_all"),
       callback: () => { void this.plugin.blogPublisher.publishAll(); },

@@ -1,3 +1,4 @@
+import { sourceTraceId } from "../utils/diagnostics";
 import { TFile, TAbstractFile, normalizePath } from "obsidian";
 
 import { ReceiveMessage, ReceiveMtimeMessage, ReceivePathMessage, SyncEndData } from "../utils/types";
@@ -217,9 +218,12 @@ export const noteRename = async function (file: TAbstractFile, oldfile: string, 
  * 接收服务端笔记修改通知
  */
 export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
     return
   }
   dump(`Receive note modify:`, data.path, data.contentHash, data.mtime, data.pathHash)
@@ -291,7 +295,7 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
             plugin.localStorageManager.setConflictedPaths(plugin.syncState.conflictedPaths);
             plugin.statusBarManager.updateConflictBadge();
 
-            SyncLogManager.getInstance().addLog('receive', 'NoteModifyConflict', `本地存在未同步的改动，跳过服务端覆盖，等待下一轮同步处理冲突: ${normalizedPath}`, 'cancelled', data.path)
+            SyncLogManager.getInstance().addLog('receive', 'NoteModifyConflict', `本地存在未同步的改动，跳过服务端覆盖，等待下一轮同步处理冲突: ${normalizedPath}`, 'cancelled', data.path, sourceVault, { traceId })
             return
           }
 
@@ -337,12 +341,12 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
     }, { maxRetries: 5, retryInterval: 100 });
   } catch (e) {
     dumpError(`[FastSync] Failed to receiveNoteSyncModify: ${normalizedPath}`, e);
-    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteModify')) {
-      SyncLogManager.getInstance().addLog('receive', 'NoteModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteModify', traceId, sourceVault)) {
+      SyncLogManager.getInstance().addLog('receive', 'NoteModify', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
     }
-    plugin.noteSyncTasks.failed++
+    if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.noteSyncTasks.failed++
   } finally {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
   }
 }
 
@@ -350,24 +354,26 @@ export const receiveNoteSyncModify = async function (data: ReceiveMessage, plugi
  * 接收服务端请求上传笔记
  */
 export const receiveNoteUpload = async function (data: ReceivePathMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+
   if (plugin.settings.syncEnabled == false) return
   if (plugin.settings.readonlySyncEnabled) {
     dump(`Read-only mode: Intercepted note upload request for ${data.path}`)
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
     return
   }
   if (isPathExcluded(data.path, plugin)) {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
     return
   }
   dump(`Receive note need push:`, data.path)
   if (!data.path.endsWith(".md")) {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
     return
   }
   const file = plugin.app.vault.getFileByPath(normalizePath(data.path))
   if (!file) {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
     return
   }
 
@@ -412,7 +418,7 @@ export const receiveNoteUpload = async function (data: ReceivePathMessage, plugi
   await plugin.concurrencyLimiter.waitForSlot(file.path)
   void plugin.websocket.SendMessage("NoteModify", sendData, undefined, () => {
     plugin.removeIgnoredFile(file.path)
-  }, (data as ReceivePathMessage & { context?: string }).context)
+  }, sourceContext)
   dump(`Note modify send`, sendData.path, sendData.contentHash, sendData.mtime, sendData.pathHash)
 }
 
@@ -420,9 +426,12 @@ export const receiveNoteUpload = async function (data: ReceivePathMessage, plugi
  * 接收服务端笔记元数据(mtime)更新通知
  */
 export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
     return
   }
   dump(`Receive note sync mtime:`, data.path, data.mtime)
@@ -458,12 +467,12 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
     }, { maxRetries: 5, retryInterval: 100 });
   } catch (e) {
     dumpError(`[FastSync] Failed to receiveNoteSyncMtime: ${normalizedPath}`, e);
-    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteMtime')) {
-      SyncLogManager.getInstance().addLog('receive', 'NoteMtime', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteMtime', traceId, sourceVault)) {
+      SyncLogManager.getInstance().addLog('receive', 'NoteMtime', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
     }
-    plugin.noteSyncTasks.failed++
+    if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.noteSyncTasks.failed++
   } finally {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
   }
 }
 
@@ -471,9 +480,12 @@ export const receiveNoteSyncMtime = async function (data: ReceiveMtimeMessage, p
  * 接收服务端笔记删除通知
  */
 export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin)) {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
     return
   }
   dump(`Receive note delete:`, data.path, data.mtime, data.pathHash)
@@ -510,10 +522,10 @@ export const receiveNoteSyncDelete = async function (data: ReceiveMessage, plugi
     }, { maxRetries: 5, retryInterval: 100 });
   } catch (e) {
     dumpError(`[FastSync] Failed to receiveNoteSyncDelete: ${normalizedPath}`, e);
-    SyncLogManager.getInstance().addLog('receive', 'NoteDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
-    plugin.noteSyncTasks.failed++
+    SyncLogManager.getInstance().addLog('receive', 'NoteDelete', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
+    if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.noteSyncTasks.failed++
   } finally {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
   }
 }
 
@@ -540,10 +552,13 @@ export const receiveNoteSyncEnd = async function (data: unknown, plugin: FastSyn
 /**
  * 接收服务端笔记重命名通知
  */
-export const receiveNoteSyncRename = async function (data: { path: string, oldPath: string, contentHash: string, mtime?: number, ctime?: number, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
+export const receiveNoteSyncRename = async function (data: { traceId?: string; context?: string; path: string, oldPath: string, contentHash: string, mtime?: number, ctime?: number, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+  const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+  const sourceVault = plugin.settings.vault;
   if (plugin.settings.syncEnabled == false) return
   if (isPathExcluded(data.path, plugin) || isPathExcluded(data.oldPath, plugin)) {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
     return
   }
 
@@ -629,18 +644,20 @@ export const receiveNoteSyncRename = async function (data: { path: string, oldPa
     }, { maxRetries: 10, retryInterval: 100 });
   } catch (e) {
     dumpError(`[FastSync] Failed to receiveNoteSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e);
-    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteRename')) {
-      SyncLogManager.getInstance().addLog('receive', 'NoteRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+    if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'NoteRename', traceId, sourceVault)) {
+      SyncLogManager.getInstance().addLog('receive', 'NoteRename', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
     }
-    plugin.noteSyncTasks.failed++
+    if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.noteSyncTasks.failed++
   } finally {
-    plugin.recordSyncCompleted('note', data.pageIndex)
+    plugin.recordSyncCompleted('note', data.pageIndex, sourceContext)
   }
 }
 
 // 收到 NoteModifyAck，将 pending hash 转移到正式 hashManager 并更新 lastNoteSyncTime
 // Receive NoteModifyAck, move pending hash to formal hashManager and update lastNoteSyncTime
-export const receiveNoteModifyAck = function (data: { lastTime?: number; path?: string }, plugin: FastSync) {
+export const receiveNoteModifyAck = function (data: { traceId?: string; context?: string; lastTime?: number; path?: string }, plugin: FastSync) {
+  const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+
   // 服务端确认笔记写入成功，将 pending hash 转移到正式 hashManager
   // Server confirmed note write success, move pending hash to formal hashManager
   if (data.path) {
@@ -668,7 +685,7 @@ export const receiveNoteModifyAck = function (data: { lastTime?: number; path?: 
   // triggered it — doesn't belong to any page, falls back to the legacy path (unchanged semantics)
   const pushPageIndex = data.path ? plugin.syncState.pendingNotePushPageIndex.get(data.path) : undefined;
   if (data.path) plugin.syncState.pendingNotePushPageIndex.delete(data.path)
-  plugin.recordSyncCompleted('note', pushPageIndex)
+  plugin.recordSyncCompleted('note', pushPageIndex, sourceContext)
 }
 
 // 收到 NoteRenameAck，按 data.path 精确匹配待确认条目并更新 hashManager；老服务端不下发 path 时回退 FIFO

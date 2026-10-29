@@ -32,6 +32,8 @@ import { SsoImportModal } from "./views/sso-import-modal";
 import { StatusBarManager } from "./lib/ui/status_bar_manager";
 import { SyncProgressTracker } from "./lib/sync/sync_progress_tracker";
 import { BlogPublisher } from "./lib/blog/blog_publisher";
+import { SyncRetryController } from "./lib/sync/sync_retry_controller";
+import { DiagnosticContexts } from "./lib/utils/diagnostics";
 
 
 
@@ -74,6 +76,21 @@ export default class FastSync extends Plugin {
   // ─── Aggregated state objects (replaces 30+ scattered fields) ────────────────
   /** 同步会话运行时状态 / Sync-session runtime state */
   readonly syncState = new SyncState()
+  readonly diagnostics = new DiagnosticContexts()
+  readonly retryRecovery = new SyncRetryController({
+    getLog: (id) => SyncLogManager.getInstance().getLog(id),
+    update: (id, patch) => SyncLogManager.getInstance().updateRetry(id, patch),
+    vault: () => this.settings.vault,
+    context: () => this.syncState.activeSyncContext,
+    connected: () => Boolean(this.menuManager?.ribbonIconStatus),
+    failures: (type) => type ? ({ note: this.noteSyncTasks, file: this.fileSyncTasks, setting: this.configSyncTasks, folder: this.folderSyncTasks }[type].failed ?? 0) : this.noteSyncTasks.failed + this.fileSyncTasks.failed + this.configSyncTasks.failed + this.folderSyncTasks.failed,
+    covers: (type) => type === 'setting' ? this.settings.configSyncEnabled : type ? this.settings.syncEnabled && (type !== 'file' || !this.settings.cloudPreviewEnabled || this.settings.cloudPreviewTypeRestricted) : this.settings.syncEnabled || this.settings.configSyncEnabled,
+    sendPage: (type, context, page, traceId) => this.retryFailedPage(type, context, page, traceId),
+    // A failed snapshot may already have advanced incremental timestamps.
+    // Rebuild the full comparison so an expired page cannot be skipped.
+    restart: (traceId) => { cancelSync(this); void handleSync(this, false, 'auto', traceId); },
+  })
+  retryFailedLog(id: string): boolean { return this.retryRecovery.retry(id); }
 
   // ─── Sync page state tracking ───────────────────────────────────────────────
   /**
@@ -89,6 +106,7 @@ export default class FastSync extends Plugin {
   }>();
 
   setupProgressTracker() {
+    this.progressTracker.onPageApplied = (type, page) => this.retryRecovery.pageApplied(type, this.syncState.activeSyncContext ?? '', page);
     this.progressTracker.onPageComplete = (type, pageIndex) => {
       this.sendSyncPageAck(type, pageIndex);
     };
@@ -120,13 +138,14 @@ export default class FastSync extends Plugin {
    * it's attributed to that download page (multi-page-in-flight case, drives the ack watermark);
    * undefined falls back to progressTracker's legacy path (single-page global count), unchanged.
    */
-  recordSyncCompleted(type: "note" | "file" | "setting" | "folder", pageIndex?: number): void {
+  recordSyncCompleted(type: "note" | "file" | "setting" | "folder", pageIndex?: number, sourceContext?: string): void {
+    if (sourceContext !== undefined && sourceContext !== (this.syncState.activeSyncContext ?? '')) return;
     this.syncState.pendingCompletionPageIndex = pageIndex;
     const tasks = type === "note" ? this.noteSyncTasks : type === "file" ? this.fileSyncTasks : type === "setting" ? this.configSyncTasks : this.folderSyncTasks;
     tasks.completed++;
   }
 
-  sendSyncPageAck(type: "note" | "file" | "setting" | "folder", pageIndex: number) {
+  sendSyncPageAck(type: "note" | "file" | "setting" | "folder", pageIndex: number, retryContext?: string, traceId?: string) {
     let action = "";
     if (type === "note") action = "NoteSyncPageAck";
     else if (type === "file") action = "FileSyncPageAck";
@@ -138,21 +157,28 @@ export default class FastSync extends Plugin {
     // 如果是首拉 ACK 信号 (pageIndex === -1)，强行忽略可能残留的 pageState，强制使用当前的 activeSyncContext
     // If it's the initial ACK signal (pageIndex === -1), ignore any stale pageState and force activeSyncContext
     const pageState = pageIndex === -1 ? undefined : this.syncPageStateMap.get(type);
-    const msgContext = pageState?.context || this.syncState.activeSyncContext || "";
+    const msgContext = retryContext || pageState?.context || this.syncState.activeSyncContext || "";
 
     dump(`[sendSyncPageAck] Sending ACK for type: ${type}, action: ${action}, pageIndex: ${pageIndex}, context: ${msgContext}`);
 
     this.websocket.Send(action, {
       context: msgContext,
+      ...(traceId ? { traceId } : {}),
       vault: this.settings.vault,
       pageIndex: pageIndex
     });
 
     // 只有当存在真正的 pageState 且非首拉时，才在发送后删除对应状态
     // Only delete from the map if we used a real pageState and it's not the initial ACK
-    if (pageIndex !== -1) {
+    if (pageIndex !== -1 && !retryContext) {
       this.syncPageStateMap.delete(type);
     }
+  }
+
+  /** Retry only the failed download page. The server keeps the failed page
+   * cached and interprets the previous ACK as a rewind request. */
+  retryFailedPage(type: "note" | "file" | "setting" | "folder", context: string, pageIndex: number, traceId?: string): void {
+    this.sendSyncPageAck(type, pageIndex > 0 ? pageIndex - 1 : -1, context, traceId);
   }
   /** 运行时 API 配置 / Runtime API configuration */
   readonly runtimeConfig = new RuntimeConfig()
@@ -643,6 +669,7 @@ export default class FastSync extends Plugin {
     // 取消当前正在进行的同步，重置运行时状态
     cancelSync(this)
     abortAllFileOperations()
+    void SyncLogManager.getInstance().shutdown()
     this.localStorageManager?.stopWatch()
     this.shareIndicatorManager?.unload()
     this.menuManager?.unload()

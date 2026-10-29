@@ -1544,6 +1544,7 @@
 }
 .fns-sync-log-container .fns-sync-log-item .fns-sync-log-item-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   font-size: 12px;
@@ -1556,6 +1557,7 @@
 .fns-sync-log-container .fns-sync-log-item .fns-sync-log-item-header .fns-sync-log-action {
   font-weight: bold;
   flex: 1;
+  min-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1577,6 +1579,7 @@
 }
 .fns-sync-log-container .fns-sync-log-item .fns-sync-log-item-header .fns-sync-log-header-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   margin-left: auto;
@@ -1601,6 +1604,26 @@
 .fns-sync-log-container .fns-sync-log-item .fns-sync-log-item-header .fns-sync-log-header-right .fns-sync-log-status-tag.status-pending {
   color: var(--text-warning);
   animation: fns-loading-pulsate 1s infinite ease-in-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fns-sync-log-container .fns-sync-log-item .fns-sync-log-item-header .fns-sync-log-header-right .fns-sync-log-status-tag.status-pending {
+    animation: none;
+  }
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-item-header .fns-sync-log-header-right .fns-sync-log-retry-button {
+  padding: 3px 8px;
+  min-height: 28px;
+  color: var(--text-normal);
+  white-space: nowrap;
+  animation: none;
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-item-header .fns-sync-log-header-right .fns-sync-log-retry-button:disabled {
+  color: var(--text-muted);
+  cursor: wait;
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-item-header .fns-sync-log-header-right .fns-sync-log-retry-button:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
 }
 .fns-sync-log-container .fns-sync-log-item .fns-sync-log-path {
   font-size: 11px;
@@ -1642,6 +1665,16 @@
   font-size: 11px;
   margin-top: 4px;
   color: var(--text-normal);
+  overflow-wrap: anywhere;
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-retry-message {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.fns-sync-log-container .fns-sync-log-item .fns-sync-log-retry-message.is-recovered {
+  color: var(--text-success);
 }
 .fns-sync-log-container .fns-sync-log-item.fns-sync-log-category-note {
   border-left-color: #08b94e;
@@ -4839,4 +4872,28 @@ body .suggestion-container {
   cursor: pointer;
 }
 
-/*# sourceMappingURL=styles.css.map */
+.fns-sync-log-trace-filter {
+  box-sizing: border-box;
+  width: calc(100% - 24px);
+  min-height: 32px;
+  margin: 0 12px 8px;
+}
+
+.fns-sync-log-trace {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-top: 6px;
+  padding: 4px 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  user-select: text;
+}
+.fns-sync-log-trace:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}

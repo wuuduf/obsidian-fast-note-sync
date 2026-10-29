@@ -2,6 +2,7 @@
 
 
 export default {
+  "ui.log.action.HttpRequest": "HTTP 請求",
   "fns.desc": "可私有化部署，多端筆記、附件、配置即時同步&備份插件，支援 Mac、Windows、Android、iOS 等平台，並提供 multi-language 支援。",
 
   "setting.tab.general": "通用",

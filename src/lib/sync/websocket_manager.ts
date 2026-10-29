@@ -10,6 +10,7 @@ import { WebSocketClient } from "./websocket_client";
 import { CLIENT_TYPE } from "../utils/types";
 import type FastSync from "../../main";
 import { $ } from "../../i18n/lang";
+import { createTraceId, sourceTraceId, validTraceId } from "../utils/diagnostics";
 
 
 // 冲突相关错误码
@@ -36,6 +37,7 @@ export interface StructuredMessageData {
   data?: Record<string, unknown> | null;
   vault?: string;
   context?: string; // 当前同步上下文 / Current sync context
+  traceId?: string;
   // WSResponse 信封 pageIndex，线上值 1-based：0/undefined=非分页消息，n>0=下载第 n-1 页（设计稿 §4.3，
   // 用户澄清覆盖设计稿 §2.4 的旧假设）。JSON 模式下该字段随服务端顶层 JSON 天然携带；pb 模式由
   // protobuf_mapper.ts 的 deReceivePacket 透传。1-based->0-based 转换统一在 handleStructuredMessage 做。
@@ -164,6 +166,7 @@ export class WebSocketManager {
         dump("Service authorization");
       },
       onClose: (client, code, reason) => {
+        this.plugin.retryRecovery?.interrupt('连接已断开，请连接后重新同步。');
         if (this.plugin.isSyncing) {
           this.plugin.isSyncing = false;
           this.plugin.isSyncRequesting = false;
@@ -263,14 +266,11 @@ export class WebSocketManager {
    * 仅对不已携带 context 字段的对象类型载荷进行注入，避免重复注入。
    */
   private injectContext(data: unknown, context?: string): unknown {
-    const ctx = context || this.plugin.syncState.activeSyncContext;
-    if (
-      ctx &&
-      data !== null &&
-      typeof data === 'object' &&
-      !('context' in (data as Record<string, unknown>))
-    ) {
-      return { ...(data as Record<string, unknown>), context: ctx };
+    if (data !== null && typeof data === 'object' && !Array.isArray(data)) {
+      const payload = data as Record<string, unknown>;
+      const ctx = typeof payload.context === 'string' ? payload.context : context || this.plugin.syncState.activeSyncContext;
+      const traceId = sourceTraceId(this.plugin, ctx, payload.traceId) || (ctx ? this.plugin.diagnostics?.begin(ctx) : undefined) || createTraceId();
+      return { ...payload, ...(ctx ? { context: ctx } : {}), traceId };
     }
     return data;
   }
@@ -286,9 +286,27 @@ export class WebSocketManager {
     return typeof record.code === "number";
   }
 
-  private handleStructuredMessage(msgAction: string, data: unknown) {
-    if (!this.isStructuredMessageData(data)) {
+  private handleStructuredMessage(msgAction: string, incoming: unknown) {
+    if (!this.isStructuredMessageData(incoming)) {
       return;
+    }
+    const data: StructuredMessageData = { ...incoming };
+
+    // Error frames are sometimes actionless JSON, including on protobuf links.
+    // Scope them before touching retry state or adding a historical log entry.
+    if (data.vault && data.vault !== this.plugin.settings.vault) return;
+    const control = msgAction === WSAction.ClientReceiveAuth || msgAction === WSAction.ClientReceiveInfo;
+    if (!control && this.plugin.retryRecovery?.acceptsContext() === false) return;
+    if (!control && data.context && this.plugin.syncState.activeSyncContext && data.context !== this.plugin.syncState.activeSyncContext) return;
+    if (data.context && validTraceId(data.traceId)) this.plugin.diagnostics?.begin(data.context, data.traceId);
+    data.traceId = sourceTraceId(this.plugin, data.context, data.traceId);
+    if (data.code <= 0 || data.code >= 300) {
+      if (this.plugin.retryRecovery?.error(data)) return;
+      if (data.data?.reason === 'download_cache_expired') return; // late ACKs, no live retry
+      if (!msgAction && data.code === 439) {
+        const type = data.data?.resourceType;
+        if (type === 'note' || type === 'file' || type === 'setting' || type === 'folder') msgAction = `${type[0].toUpperCase()}${type.slice(1)}Sync`;
+      }
     }
 
     // 记录接收到的消息
@@ -298,6 +316,7 @@ export class WebSocketManager {
 
     if (msgAction === WSAction.ClientReceiveAuth) {
       if (data.code <= 0 || data.code >= 300) {
+        this.plugin.retryRecovery?.interrupt('认证未通过，请连接后重新同步。');
         showSyncNotice(formatAuthorizationError(data), 6000);
         return;
       } else {
@@ -381,14 +400,17 @@ export class WebSocketManager {
           this.plugin.concurrencyLimiter.releaseSlot(path);
           const pageIndex = this.plugin.syncState.pendingNotePushPageIndex.get(path);
           this.plugin.syncState.pendingNotePushPageIndex.delete(path);
-          this.plugin.recordSyncCompleted('note', pageIndex);
+          this.plugin.recordSyncCompleted('note', pageIndex, data.context);
         }
       } else if (data.code === 463 && typeof data.data?.sessionID === "string") {
         receiveFileUploadSessionNotFound(data.data.sessionID, this.plugin);
       } else {
         const errorMsg = data.message || "";
         const errorDetails = data.details ? " Details=" + data.details : "";
-        showSyncNotice("Service Error: Code=" + data.code + " Message=" + errorMsg + errorDetails);
+        const retryHint = data.code === 439 && data.data && typeof data.data === "object" && (data.data as { retryable?: boolean }).retryable
+          ? "；可在同步日志中重试失败页"
+          : "";
+        showSyncNotice("Service Error: Code=" + data.code + " Message=" + errorMsg + errorDetails + retryHint);
         
         // 如果错误数据里含有 sessionID 或 path，也进行释放和清理，防止同步卡死
         // If error payload contains sessionID or path, release slot and increment completed to prevent deadlock
@@ -432,6 +454,7 @@ export class WebSocketManager {
         if (typeof data.data === 'object' && data.data !== null) {
           const merged = { ...data.data };
           if (data.context) merged.context = data.context;
+          if (data.traceId) merged.traceId = data.traceId;
           if (pageIndex !== undefined) merged.pageIndex = pageIndex;
           payload = merged;
         }

@@ -5,6 +5,8 @@ import { hashContent, addRandomParam, showSyncNotice, dump, dumpError, nativeFet
 import { CLIENT_TYPE } from "../utils/types";
 import { getLocale } from "../../i18n/lang";
 import type FastSync from "../../main";
+import { createTraceId, validTraceId, DiagnosticRequestError } from "../utils/diagnostics";
+import { SyncLogManager } from "../sync/sync_log_manager";
 
 
 export interface NoteHistoryItem {
@@ -147,6 +149,7 @@ export interface ApiResponse<T = unknown> {
     message?: string;
     details?: string;
     data: T;
+    traceId?: string;
 }
 
 /**
@@ -156,17 +159,25 @@ export class HttpApiService {
     constructor(private plugin: FastSync) { }
 
     /** Start the server-side Firefly projection for one canonical note or the vault. */
-    async executeBlogPublish(path?: string): Promise<void> {
-        const { status, json } = await this.request("/api/blog-publish/execute", {
-            method: "POST",
-            body: JSON.stringify({
-                vault: this.plugin.settings.vault,
-                path: path || ""
-            })
-        });
-        const response = json as ApiResponse<unknown>;
-        if (status !== 200 || !this.isSuccess(response)) {
-            throw new Error(response?.details || response?.message || `HTTP ${status}`);
+    async executeBlogPublish(path?: string): Promise<{ traceId: string }> {
+        const traceId = createTraceId();
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 30000);
+        try {
+            const { status, json, traceId: responseTrace } = await this.request("/api/blog-publish/execute", {
+                method: "POST", signal: controller.signal, traceId,
+                body: JSON.stringify({ vault: this.plugin.settings.vault, path: path || "" })
+            });
+            const response = json as ApiResponse<unknown>;
+            if (status !== 200 || !this.isSuccess(response)) {
+                throw new DiagnosticRequestError(response?.details || response?.message || `HTTP ${status}`, responseTrace);
+            }
+            return { traceId: responseTrace };
+        } catch (error) {
+            if (controller.signal.aborted) throw new DiagnosticRequestError("发布请求等待超时，任务可能已排队，请先检查发布历史。", traceId);
+            throw error instanceof DiagnosticRequestError ? error : new DiagnosticRequestError(error, traceId);
+        } finally {
+            window.clearTimeout(timeoutId);
         }
     }
 
@@ -302,8 +313,48 @@ export class HttpApiService {
      * @param endpoint 接口相对路径（如 /api/notes，不包含主机名）
      * @param options 请求选项
      */
-    private async request(endpoint: string, options: { method: string, headers?: Record<string, string>, body?: string, signal?: AbortSignal, noAuth?: boolean }): Promise<{ status: number, json: unknown, finalUrl: string }> {
+    private async request(endpoint: string, options: { method: string, headers?: Record<string, string>, body?: string, signal?: AbortSignal, noAuth?: boolean, traceId?: string }): Promise<{ status: number, json: unknown, finalUrl: string, traceId: string }> {
+        const traceId = validTraceId(options.traceId) || createTraceId();
+        const vault = this.plugin.settings.vault;
+        const log = (status: 'success' | 'error', message: string, diagnosticId = traceId) => {
+            try {
+                SyncLogManager.getInstance().addOrUpdateLog({ id: `http-${traceId}`, type: 'info', action: 'HttpRequest',
+                    status, traceId: diagnosticId, vault, message: `${options.method} ${endpoint.split('?')[0]}: ${message}` });
+            } catch { /* A diagnostic write must never block the request itself. */ }
+        };
+        try {
+            const response = await this.requestTransport(endpoint, { ...options, headers: { ...options.headers, 'X-Trace-ID': traceId } });
+            const json = response.json !== null && typeof response.json === 'object' ? response.json as { traceId?: unknown } : null;
+            const responseTraceId = validTraceId(json?.traceId) || response.traceId || traceId;
+            const failed = response.status >= 300 || (json && 'code' in json && !this.isSuccess(json));
+            log(failed ? 'error' : 'success', `HTTP ${response.status}`, responseTraceId);
+            return { ...response, traceId: responseTraceId };
+        } catch (error) {
+            const failure = error instanceof DiagnosticRequestError ? error : new DiagnosticRequestError(error, traceId);
+            log('error', '请求失败或已取消');
+            throw failure;
+        }
+    }
+
+    private async requestTransport(endpoint: string, options: { method: string, headers?: Record<string, string>, body?: string, signal?: AbortSignal, noAuth?: boolean }): Promise<{ status: number, json: unknown, finalUrl: string, traceId?: string }> {
+        const assertNotAborted = () => {
+            if (options.signal?.aborted) throw new Error('Network request aborted');
+        };
+        assertNotAborted();
+        // A response belongs to the connection that sent it. In particular an
+        // old redirect must not overwrite a newly selected server or vault.
+        const connectionKey = () => JSON.stringify([
+            this.plugin.settings.api, this.plugin.runApi, this.plugin.settings.apiToken,
+            this.plugin.settings.vault, this.plugin.settings.networkLibrary,
+            this.plugin.settings.allowedRedirectDomains
+        ]);
+        const startedConnection = connectionKey();
+        const assertCurrentConnection = () => {
+            assertNotAborted();
+            if (connectionKey() !== startedConnection) throw new Error('连接设置已变化，请重新发起请求。');
+        };
         const networkLibrary = this.plugin.settings.networkLibrary;
+        const allowedRedirectDomains = this.plugin.settings.allowedRedirectDomains;
         // 使用 runApi 作为基准
         const base = (this.plugin.runApi || this.plugin.settings.api).replace(/\/+$/, "");
         const url = addRandomParam(base + endpoint);
@@ -334,18 +385,30 @@ export class HttpApiService {
             }).then(response => ({
                 status: response.status,
                 json: response.json as unknown,
+                traceId: validTraceId(Object.entries(response.headers || {}).find(([key]) => key.toLowerCase() === 'x-trace-id')?.[1]),
                 finalUrl: (response as unknown as { url?: string }).url || url
             }));
 
             if (options.signal) {
-                const timeoutPromise = new Promise<{ status: number, json: unknown, finalUrl: string }>((_, reject) => {
-                    options.signal!.addEventListener('abort', () => reject(new Error('Network request timeout')));
-                    if (options.signal!.aborted) reject(new Error('Network request timeout'));
+                const signal = options.signal;
+                let onAbort: () => void = () => {};
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                    onAbort = () => reject(new Error('Network request aborted'));
+                    signal.addEventListener('abort', onAbort, { once: true });
+                    if (signal.aborted) onAbort();
                 });
-                return await Promise.race([requestPromise, timeoutPromise]);
+                try {
+                    const response = await Promise.race([requestPromise, timeoutPromise]);
+                    assertCurrentConnection();
+                    return response;
+                } finally {
+                    signal.removeEventListener('abort', onAbort);
+                }
             }
 
-            return await requestPromise;
+            const response = await requestPromise;
+            assertCurrentConnection();
+            return response;
         } else {
             const fetchOptions: RequestInit = {
                 method: options.method,
@@ -361,10 +424,11 @@ export class HttpApiService {
             } catch {
                 // ignore
             }
+            assertCurrentConnection();
 
             if (res.url && res.url !== url) {
                 try {
-                    if (!isAllowedRedirect(url, res.url, this.plugin.settings.allowedRedirectDomains)) {
+                    if (!isAllowedRedirect(url, res.url, allowedRedirectDomains)) {
                         throw new Error(`Unsafe cross-domain redirect blocked. The destination domain "${new URL(res.url).hostname}" is not in your allowed redirect list. Please add it to the allowed list in settings if you trust it.`);
                     } else {
                         const apiIndex = res.url.indexOf("/api/");
@@ -382,6 +446,7 @@ export class HttpApiService {
             return {
                 status: res.status,
                 json: json,
+                traceId: validTraceId(res.headers?.get('X-Trace-ID')),
                 finalUrl: res.url
             };
         }

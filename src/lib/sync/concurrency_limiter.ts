@@ -7,7 +7,7 @@ import { dump } from "../utils/helpers";
  */
 export class ConcurrencyLimiter {
     private plugin: FastSync;
-    private queue: { key: string; priority: number; resolve: () => void }[] = [];
+    private queue: { key: string; priority: number; isFifo: boolean; resolve: () => void }[] = [];
     private activeKeys: Set<string> = new Set();
     
     // 针对 FIFO 类型的 ACK（如重命名消息），记录其对应的 Key 顺序
@@ -40,12 +40,8 @@ export class ConcurrencyLimiter {
             this.queue.push({
                 key,
                 priority,
-                resolve: () => {
-                    this.activeKeys.add(key);
-                    if (isFifo) this.fifoKeys.push(key);
-                    dump(`Concurrency: Slot acquired from queue for ${key}. Active: ${this.activeKeys.size}`);
-                    resolve();
-                }
+                isFifo,
+                resolve,
             });
             // 按照优先级倒序排序（优先级数值越大的越靠前）
             this.queue.sort((a, b) => b.priority - a.priority);
@@ -104,6 +100,8 @@ export class ConcurrencyLimiter {
         while (this.activeKeys.size < this.plugin.settings.maxConcurrentUploads && this.queue.length > 0) {
             const next = this.queue.shift();
             if (next) {
+                this.activeKeys.add(next.key);
+                if (next.isFifo) this.fifoKeys.push(next.key);
                 dump(`Concurrency: Resuming task ${next.key} from queue.`);
                 next.resolve();
             }

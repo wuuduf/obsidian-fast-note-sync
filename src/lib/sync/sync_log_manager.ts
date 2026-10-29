@@ -3,8 +3,9 @@ import { moment } from "obsidian";
 const safeMoment = moment as unknown as (inp?: unknown) => { format(format: string): string };
 
 import FastSync from "../../main";
-import { dumpError } from "../utils/helpers";
+import { dumpError, getPluginDir } from "../utils/helpers";
 import { $ } from "../../i18n/lang";
+import { sourceTraceId, validTraceId } from "../utils/diagnostics";
 
 
 // 常见错误码 -> i18n 人话文案键映射表（覆盖客户端已知的鉴权/冲突/上传会话等高频错误码，
@@ -35,6 +36,10 @@ function formatErrorCodeMessage(code: number): string {
     return $("ui.log.error_code.unknown", { code });
 }
 
+function isRetryType(value: unknown): value is 'note' | 'file' | 'setting' | 'folder' {
+    return value === 'note' || value === 'file' || value === 'setting' || value === 'folder';
+}
+
 
 export type LogType = 'send' | 'receive' | 'info' | 'error';
 export type LogStatus = 'success' | 'error' | 'pending' | 'cancelled';
@@ -52,6 +57,14 @@ export interface SyncLog {
     progress?: number;
     message?: string;
     vault?: string;
+    traceId?: string;
+    retryable?: boolean;
+    retryType?: 'note' | 'file' | 'setting' | 'folder';
+    retryContext?: string;
+    retryPageIndex?: number;
+    retryState?: 'retrying' | 'recovered' | 'failed' | 'restart-required';
+    retryMessage?: string;
+    retryAttempts?: number;
 }
 
 interface SyncSummaryStats {
@@ -97,6 +110,7 @@ export class SyncLogManager {
     // Unread failed count, used by the status bar red dot; cleared once the log view is opened
     // and switched to "failed only"
     private unreadFailedCount = 0;
+    private unreadFailedIds = new Set<string>();
     private failedCountListeners: Set<(count: number) => void> = new Set();
     // 状态栏点击"仅看失败"跳转到日志视图时，日志视图挂载后消费一次此标记切换筛选
     // Set right before revealing the log view from the status bar; consumed once on mount to
@@ -105,6 +119,8 @@ export class SyncLogManager {
     private listeners: Set<(logs: SyncLog[]) => void> = new Set();
     private plugin: FastSync | null = null;
     private logFilePath: string = "";
+    private writeQueue: Promise<void> = Promise.resolve();
+    private logGeneration = 0;
 
     // notify() 节流合并：高频同步消息每条都触发会导致大量 UI/工作区事件重渲染
     private readonly NOTIFY_THROTTLE_MS = 100;
@@ -122,7 +138,9 @@ export class SyncLogManager {
     }
 
     public init(plugin: FastSync) {
+        this.logGeneration++;
         this.plugin = plugin;
+        if (plugin.manifest?.id) this.logFilePath = `${getPluginDir(plugin)}/sync.log`;
     }
 
     private getCategory(action: string): LogCategory {
@@ -135,6 +153,9 @@ export class SyncLogManager {
     }
 
     public addOrUpdateLog(log: Partial<SyncLog> & { id: string, action: string, type: LogType }, opts?: { skipPersist?: boolean }) {
+        const traceId = validTraceId(log.traceId);
+        if (traceId) log = { ...log, traceId };
+        else if ('traceId' in log) { log = { ...log }; delete log.traceId; }
         const existingLog = this.logs.get(log.id);
         const category = this.getCategory(log.action);
 
@@ -170,11 +191,11 @@ export class SyncLogManager {
             this.logs.set(log.id, updatedLog);
 
             if (statusChanged) {
-                this.onStatusTransition(existingLog.status, targetStatus);
+                this.onStatusTransition(existingLog.status, targetStatus, log.id);
             }
 
             // 仅在状态从 pending 变为 success/error 时记录到文件，避免进度更新刷屏
-            if (statusChanged && targetStatus !== 'pending' && !opts?.skipPersist) {
+            if ((statusChanged || log.retryState !== undefined && log.retryState !== existingLog.retryState) && targetStatus !== 'pending' && !opts?.skipPersist) {
                 void this.persistToFile(updatedLog);
             }
         } else {
@@ -189,11 +210,19 @@ export class SyncLogManager {
                 status: log.status || 'success',
                 progress: log.progress,
                 message: log.message,
-                vault: log.vault
+                vault: log.vault,
+                traceId,
+                retryable: log.retryable,
+                retryType: log.retryType,
+                retryContext: log.retryContext,
+                retryPageIndex: log.retryPageIndex,
+                retryState: log.retryState,
+                retryMessage: log.retryMessage,
+                retryAttempts: log.retryAttempts,
             };
             this.logs.set(log.id, newLog);
             if (newLog.status === 'error') {
-                this.onStatusTransition(undefined, 'error');
+                this.onStatusTransition(undefined, 'error', log.id);
             }
 
             if (this.logs.size > this.MAX_LOGS) {
@@ -238,6 +267,9 @@ export class SyncLogManager {
                 if (log.status === 'error') {
                     this.logs.delete(key);
                     this.failedCount--;
+                    this.unreadFailedIds.delete(key);
+                    this.unreadFailedCount = this.unreadFailedIds.size;
+                    this.notifyFailedCountListeners();
                     evicted = true;
                     break;
                 }
@@ -251,14 +283,17 @@ export class SyncLogManager {
      * Maintain the failedCount / unreadFailedCount counters used by the failed-item eviction cap
      * and the status bar red dot.
      */
-    private onStatusTransition(fromStatus: LogStatus | undefined, toStatus: LogStatus): void {
+    private onStatusTransition(fromStatus: LogStatus | undefined, toStatus: LogStatus, id: string): void {
         if (fromStatus === toStatus) return;
         if (toStatus === 'error') {
             this.failedCount++;
-            this.unreadFailedCount++;
+            this.unreadFailedIds.add(id);
+            this.unreadFailedCount = this.unreadFailedIds.size;
             this.notifyFailedCountListeners();
         } else if (fromStatus === 'error') {
             this.failedCount--;
+            this.unreadFailedIds.delete(id);
+            this.unreadFailedCount = this.unreadFailedIds.size;
             this.notifyFailedCountListeners();
         }
     }
@@ -270,6 +305,7 @@ export class SyncLogManager {
     public markFailedSeen(): void {
         if (this.unreadFailedCount === 0) return;
         this.unreadFailedCount = 0;
+        this.unreadFailedIds.clear();
         this.notifyFailedCountListeners();
     }
 
@@ -298,7 +334,7 @@ export class SyncLogManager {
         return value;
     }
 
-    public addLog(type: LogType, action: string, message?: string, status: LogStatus = 'success', path?: string, vault?: string, opts?: { skipPersist?: boolean }) {
+    public addLog(type: LogType, action: string, message?: string, status: LogStatus = 'success', path?: string, vault?: string, opts?: { skipPersist?: boolean, traceId?: string }) {
         this.addOrUpdateLog({
             id: Math.random().toString(36).substring(2, 11),
             type,
@@ -307,6 +343,7 @@ export class SyncLogManager {
             status,
             path,
             vault,
+            traceId: opts?.traceId,
             timestamp: Date.now()
         }, opts);
     }
@@ -325,20 +362,21 @@ export class SyncLogManager {
             "FolderSyncPage", "NoteSyncPage", "FileSyncPage", "SettingSyncPage",
             "FolderSyncPageAck", "NoteSyncPageAck", "FileSyncPageAck", "SettingSyncPageAck"
         ];
-        if (excludedActions.includes(action)) {
+        if (excludedActions.includes(action) && !(typeof data === 'object' && data !== null && typeof (data as { code?: unknown }).code === 'number' && (data as { code: number }).code >= 300)) {
             return;
         }
 
         const msgData = data as { 
-            data?: { Path?: string; path?: string; Vault?: string; vault?: string; sessionId?: string; SessionID?: string };
+            data?: { Path?: string; path?: string; Vault?: string; vault?: string; sessionId?: string; SessionID?: string; retryable?: boolean; restartRequired?: boolean; resourceType?: string; pageIndex?: number };
             Path?: string; path?: string; Vault?: string; vault?: string; sessionId?: string; SessionID?: string;
-            code?: number; message?: string;
+            code?: number; message?: string; context?: string; traceId?: string;
         };
 
         // 提取路径信息
         const logPath = msgData.data?.Path || msgData.Path || msgData.path || msgData.data?.path;
         // 提取 Vault 信息
         const logVault = msgData.Vault || msgData.vault || msgData.data?.Vault || msgData.data?.vault;
+        const traceId = this.plugin ? sourceTraceId(this.plugin, msgData.context, msgData.traceId) : validTraceId(msgData.traceId);
 
         // 根据消息类型调整 action 名称
         let logAction = action;
@@ -349,6 +387,18 @@ export class SyncLogManager {
 
         // 提取 sessionId
         const sessionId = msgData.sessionId || msgData.data?.sessionId || msgData.data?.SessionID;
+        const retry = msgData.data;
+        if (msgData.code === 439 && (retry?.retryable || retry?.restartRequired)) {
+            const context = (data as { context?: string }).context;
+            const identified = typeof context === 'string' && context.length > 0 && isRetryType(retry.resourceType) && Number.isSafeInteger(retry.pageIndex) && retry.pageIndex! >= 0;
+            const id = identified ? JSON.stringify(['retry', logVault, context, retry.resourceType, retry.pageIndex]) : Math.random().toString(36).substring(2, 11);
+            if (identified && this.logs.get(id)?.retryState === 'recovered') return;
+            this.addOrUpdateLog({ id, type: 'receive', action: logAction, status: 'error', message: msgData.message,
+                path: logPath, vault: logVault, traceId, retryable: true, retryType: isRetryType(retry.resourceType) ? retry.resourceType : undefined,
+                retryContext: context, retryPageIndex: Number.isSafeInteger(retry.pageIndex) && retry.pageIndex! >= 0 ? retry.pageIndex : undefined,
+                retryState: retry.restartRequired ? 'restart-required' : 'failed', retryMessage: retry.restartRequired ? '下载缓存已过期，请重新同步。' : undefined });
+            return;
+        }
 
         if (sessionId) {
             // 根据 code 判断状态
@@ -378,14 +428,19 @@ export class SyncLogManager {
                 status: targetStatus,
                 path: logPath,
                 vault: logVault,
-                message: msgData.message || (msgData.code !== undefined ? formatErrorCodeMessage(msgData.code) : undefined)
+                traceId,
+                message: msgData.message || (msgData.code !== undefined ? formatErrorCodeMessage(msgData.code) : undefined),
+                retryable: msgData.data?.retryable === true,
+                retryType: isRetryType(msgData.data?.resourceType) ? msgData.data?.resourceType : undefined,
+                retryContext: typeof (data as { context?: unknown }).context === 'string' ? (data as { context: string }).context : undefined,
+                retryPageIndex: typeof msgData.data?.pageIndex === 'number' ? msgData.data.pageIndex : undefined
             }, { skipPersist });
         } else {
             // 没有 sessionId 的消息
             const status = (msgData.code !== undefined && (msgData.code === 0 || (msgData.code) > 200)) ? 'error' : 'success';
             const message = msgData.message || (msgData.code !== undefined ? formatErrorCodeMessage(msgData.code) : undefined);
             const skipPersist = HIGH_FREQUENCY_RECEIVE_ACTIONS.has(action) && status === 'success';
-            this.addLog('receive', logAction, message, status, logPath, logVault, { skipPersist });
+            this.addOrUpdateLog({ id: Math.random().toString(36).substring(2, 11), type: 'receive', action: logAction, message, status, path: logPath, vault: logVault, traceId, retryable: msgData.data?.retryable === true, retryType: isRetryType(msgData.data?.resourceType) ? msgData.data?.resourceType : undefined, retryContext: typeof (data as { context?: unknown }).context === 'string' ? (data as { context: string }).context : undefined, retryPageIndex: typeof msgData.data?.pageIndex === 'number' ? msgData.data.pageIndex : undefined, timestamp: Date.now() }, { skipPersist });
         }
     }
 
@@ -410,10 +465,12 @@ export class SyncLogManager {
         // 提取路径和 Vault 信息(仅当 data 是对象时)
         let logPath: string | undefined = undefined;
         let logVault: string | undefined = undefined;
+        let traceId: string | undefined;
         if (typeof data === "object" && data !== null) {
-            const d = data as { Path?: string, path?: string, Vault?: string, vault?: string, data?: { Path?: string, path?: string, Vault?: string, vault?: string } };
+            const d = data as { Path?: string, path?: string, Vault?: string, vault?: string, context?: string, traceId?: string, data?: { Path?: string, path?: string, Vault?: string, vault?: string } };
             logPath = d.Path || d.path || d.data?.Path || d.data?.path;
             logVault = d.Vault || d.vault || d.data?.Vault || d.data?.vault;
+            traceId = this.plugin ? sourceTraceId(this.plugin, d.context, d.traceId) : validTraceId(d.traceId);
         }
 
         // 根据消息类型调整 action 名称
@@ -437,33 +494,56 @@ export class SyncLogManager {
                 status: targetStatus,
                 path: logPath,
                 vault: logVault,
+                traceId,
             });
         } else {
-            this.addLog('send', logAction, undefined, targetStatus, logPath, logVault);
+            this.addLog('send', logAction, undefined, targetStatus, logPath, logVault, { traceId });
         }
     }
 
 
     public async clearLogs() {
+        this.logGeneration++;
+        this.plugin?.retryRecovery?.clear();
         this.logs.clear();
         this.failedCount = 0;
         this.unreadFailedCount = 0;
+        this.unreadFailedIds.clear();
         this.notifyFailedCountListeners();
         this.notify();
 
         // 同时清空日志文件
         if (this.plugin && this.logFilePath) {
             try {
-                await this.plugin.app.vault.adapter.write(this.logFilePath, "");
+                const adapter = this.plugin.app.vault.adapter;
+                const logFilePath = this.logFilePath;
+                const cleared = this.writeQueue.then(() => adapter.write(logFilePath, ""));
+                this.writeQueue = cleared.catch(() => {});
+                await cleared;
             } catch (e) {
                 dumpError("Failed to clear sync log file:", e);
             }
         }
     }
 
+    public async shutdown(): Promise<void> {
+        this.logGeneration++;
+        this.plugin = null;
+        if (this.notifyTimer !== null) window.clearTimeout(this.notifyTimer);
+        this.notifyTimer = null;
+        this.notifyPending = false;
+        await this.writeQueue;
+    }
+
     public getLogs(): SyncLog[] {
         // Map 按插入序（旧→新）迭代，反转后得到与原数组实现一致的“最新在前”顺序
         return Array.from(this.logs.values()).reverse();
+    }
+
+    public getLog(id: string): SyncLog | undefined { return this.logs.get(id); }
+    public updateRetry(id: string, patch: Partial<SyncLog>): void {
+        const log = this.logs.get(id);
+        if (log) this.addOrUpdateLog({ ...patch, id, action: log.action, type: log.type });
     }
 
     public subscribe(listener: (logs: SyncLog[]) => void) {
@@ -532,10 +612,24 @@ export class SyncLogManager {
                 }
             }
 
-            const line = `[${timeStr}] [${typeStr}] [${categoryStr}] [${statusStr}] ${actionStr}${pathStr}${msgStr}\n`;
+            const retryStr = log.retryState ? ` [Retry: ${log.retryState}]${log.retryMessage ? ` ${log.retryMessage.replace(/\n/g, ' ')}` : ''}` : '';
+            const traceStr = log.traceId ? ` [Trace: ${log.traceId}]` : '';
+            const body = `[${timeStr}] [${typeStr}] [${categoryStr}] [${statusStr}] ${actionStr}${pathStr}${msgStr}${retryStr}`;
+            const line = `${body.slice(0, 8192)}${body.length > 8192 ? ' [truncated]' : ''}${traceStr}\n`;
 
-            // 使用 Obsidian API 追加文件
-            await this.plugin.app.vault.adapter.append(this.logFilePath, line);
+            const adapter = this.plugin.app.vault.adapter;
+            const logFilePath = this.logFilePath;
+            const generation = this.logGeneration;
+            const write = this.writeQueue.then(async () => {
+                if (generation !== this.logGeneration) return;
+                const stat = await adapter.stat(logFilePath);
+                if (generation !== this.logGeneration) return;
+                // Keep diagnostics bounded, including on long-running mobile clients.
+                if ((stat?.size ?? 0) + line.length * 3 > 1024 * 1024) await adapter.write(logFilePath, line);
+                else await adapter.append(logFilePath, line);
+            });
+            this.writeQueue = write.catch(() => {});
+            await write;
         } catch (e) {
             dumpError("Failed to write sync log to file:", e);
         }

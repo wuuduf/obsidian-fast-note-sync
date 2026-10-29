@@ -2,6 +2,7 @@
 
 
 export default {
+  "ui.log.action.HttpRequest": "HTTP 요청",
   "fns.desc": "프라이빗 배포가 가능한 멀티플랫폼 노트, 첨부파일, 설정 실시간 동기화 및 백업 플러그인입니다. Mac, Windows, Android, iOS 등 다양한 플랫폼을 지원하며 multi-language 를 제공합니다.",
 
   "setting.tab.general": "일반",

@@ -1,6 +1,6 @@
 import { TFolder, TFile, normalizePath } from "obsidian";
 
-import { receiveFileUpload, receiveFileSyncUpdate, receiveFileSyncDelete, receiveFileSyncMtime, receiveFileSyncChunkDownload, receiveFileSyncEnd, checkAndUploadAttachments, receiveFileSyncRename, receiveFileRenameAck, receiveFileUploadAck, receiveFileDeleteAck, isPluginUnloading } from "./operator_file";
+import { receiveFileUpload, receiveFileSyncUpdate, receiveFileSyncDelete, receiveFileSyncMtime, receiveFileSyncChunkDownload, receiveFileSyncEnd, checkAndUploadAttachments, receiveFileSyncRename, receiveFileRenameAck, receiveFileUploadAck, receiveFileDeleteAck, isPluginUnloading, clearPendingFileRePush } from "./operator_file";
 import { hashContent, hashContentAsync, dump, isPathExcluded, isFolderSyncPathExcluded, configIsPathExcluded, getConfigSyncCustomDirs, generateUUID, showSyncNotice, isLargeBinarySyncRisk, describeBinarySyncLimit, hashFileAsync, formatFileSize, yieldToMain, getPluginDir } from "../utils/helpers";
 import { receiveConfigSyncModify, receiveConfigUpload, receiveConfigSyncMtime, receiveConfigSyncDelete, receiveConfigSyncEnd, configAllPaths, receiveConfigSyncClear, receiveConfigModifyAck, receiveConfigDeleteAck } from "./operator_config";
 import { receiveNoteSyncModify, receiveNoteUpload, receiveNoteSyncMtime, receiveNoteSyncDelete, receiveNoteSyncEnd, receiveNoteSyncRename, receiveNoteModifyAck, receiveNoteRenameAck, receiveNoteDeleteAck } from "./operator_note";
@@ -102,6 +102,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
       }
     }
     dump(`Sync completion timeout after ${SYNC_TIMEOUT_MS}ms. Tasks: note=${JSON.stringify(plugin.noteSyncTasks)}, file=${JSON.stringify(plugin.fileSyncTasks)}, folder=${JSON.stringify(plugin.folderSyncTasks)}, config=${JSON.stringify(plugin.configSyncTasks)}`)
+    plugin.retryRecovery?.interrupt('同步已超时，请重新同步。');
     plugin.syncState.activeSyncContext = null; // 同步超时，清空活跃的上下文 / Sync timeout, reset the active context
     plugin.syncTypeCompleteCount = 0;
     plugin.resetSyncTasks();
@@ -184,6 +185,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
     // only to honestly surface "completed with N failures" instead of falsely reporting full success
     const totalFailed = plugin.noteSyncTasks.failed + plugin.fileSyncTasks.failed
       + plugin.configSyncTasks.failed + plugin.folderSyncTasks.failed;
+    plugin.retryRecovery?.completed(plugin.syncState.activeSyncContext ?? '', totalFailed, plugin.syncState.offlineGuardSkippedThisRound || plugin.fileDownloadSessions.size > 0);
 
     const summaryMessage = JSON.stringify({
       syncType,
@@ -196,6 +198,7 @@ export function checkSyncCompletion(plugin: FastSync, intervalId?: number, syncS
 
     SyncLogManager.getInstance().addOrUpdateLog({
       id: `summary-${Date.now()}`,
+      traceId: plugin.diagnostics?.get(plugin.syncState.activeSyncContext),
       type: 'info',
       action: 'SyncSummary',
       status: 'success',
@@ -348,6 +351,7 @@ async function handleSyncPage(data: unknown, plugin: FastSync, type: "note" | "f
   dump(`[PageSync] Received page info for ${type}, pageIndex: ${pageMsg.pageIndex}, totalCount: ${pageMsg.totalCount}, isLast: ${pageMsg.isLast}, context: ${pageMsg.context}`);
 
   // 通知进度追踪器
+  plugin.retryRecovery?.pageReceived(type, pageMsg.context, pageMsg.pageIndex);
   plugin.progressTracker.recordPageProgress(type, pageMsg.pageIndex, pageMsg.totalCount, pageMsg.isLast);
 
   // 登记当前下载分页状态 (Register page metadata)
@@ -361,6 +365,7 @@ async function handleSyncPage(data: unknown, plugin: FastSync, type: "note" | "f
   });
 
   if (pageMsg.totalCount === 0) {
+    plugin.retryRecovery?.pageApplied(type, pageMsg.context, pageMsg.pageIndex);
     dump(`[PageSync] Page ${pageMsg.pageIndex} for ${type} is empty. Sending ACK immediately.`);
     // 如果是最后一页，无需发送确认 ACK (已由服务端主动销毁缓存)
     // If it's the last page, no need to send confirmation ACK (cache cleared by server)
@@ -555,7 +560,7 @@ async function receiveSyncEndWrapper(data: unknown, plugin: FastSync, type: "not
 /**
  * 启动全量/增量同步
  */
-export const handleSync = async function (plugin: FastSync, isLoadLastTime: boolean = true, syncMode: SyncMode = "auto") {
+export const handleSync = async function (plugin: FastSync, isLoadLastTime: boolean = true, syncMode: SyncMode = "auto", inheritedTraceId?: string) {
   if (plugin.isSyncing) {
     dump("Sync already in progress, skipping");
     return;
@@ -590,6 +595,8 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
   try {
     context = generateUUID();
     plugin.syncState.activeSyncContext = context; // 记录活跃的同步上下文 / Record the active sync context
+    plugin.diagnostics?.begin(context, inheritedTraceId);
+    plugin.retryRecovery?.started(context, plugin.settings.vault);
     dump(`Sync context generated: ${context}`);
     if (!plugin.menuManager.ribbonIconStatus) {
       // WebSocket 处于断开/退避状态，立即触发重连，连接成功后自动执行同步
@@ -597,6 +604,7 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
       plugin.syncState.pendingSyncType = isLoadLastTime ? 'incremental' : 'full';
       plugin.websocket.triggerReconnect();
       showSyncNotice($("ui.menu.reconnecting"));
+      plugin.retryRecovery?.interrupt('连接尚未就绪，请连接后重新同步。');
       plugin.syncState.activeSyncContext = null; // 早期退出，清空上下文 / Early return, reset the context
       return;
     }
@@ -671,6 +679,7 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     if (plugin.settings.configSyncEnabled && shouldSyncConfigs) expectedCount += 1;
     plugin.expectedSyncCount = expectedCount;
     if (expectedCount === 0) {
+      plugin.retryRecovery?.interrupt('当前没有启用可恢复的同步范围，请检查设置后重试。');
       plugin.updateStatusBar("");
       plugin.syncState.activeSyncContext = null; // 无同步任务，清空上下文 / No tasks, reset the context
       return;
@@ -686,6 +695,7 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     if (plugin.settings.syncEnabled || plugin.settings.configSyncEnabled) {
       SyncLogManager.getInstance().addOrUpdateLog({
         id: hashingLogId,
+        traceId: plugin.diagnostics?.get(context),
         type: 'info',
         action: `VaultScanning_${plugin.currentSyncType}`,
         status: 'pending',
@@ -1160,6 +1170,7 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
     // invocation, so a late exception from a superseded (stale) sync session cannot
     // clobber a newer session that has already taken over.
     if (plugin.syncState.activeSyncContext === context) {
+      plugin.retryRecovery?.interrupt('同步启动失败，请检查错误后重新同步。');
       plugin.syncState.activeSyncContext = null; // 同步失败，清空上下文 / Sync failed, reset the context
       plugin.updateStatusBar($("ui.status.failed") || "Sync Failed");
       window.setTimeout(() => plugin.updateStatusBar(""), 10000);
@@ -1182,6 +1193,9 @@ export const handleSync = async function (plugin: FastSync, isLoadLastTime: bool
  * Cancel the current sync and reset all runtime states.
  */
 export function cancelSync(plugin: FastSync): void {
+  const traceId = plugin.diagnostics?.get(plugin.syncState.activeSyncContext);
+  plugin.retryRecovery?.interrupt('同步已取消，需重新同步后确认恢复。');
+  clearPendingFileRePush();
   if (plugin.syncState.progressCheckIntervalId !== null) {
     window.clearInterval(plugin.syncState.progressCheckIntervalId);
     plugin.syncState.progressCheckIntervalId = null;
@@ -1231,6 +1245,7 @@ export function cancelSync(plugin: FastSync): void {
 
   SyncLogManager.getInstance().addOrUpdateLog({
     id: `summary-${Date.now()}`,
+    traceId,
     type: 'info',
     action: 'SyncSummary',
     status: 'cancelled',

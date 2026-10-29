@@ -1788,6 +1788,7 @@
 
     .fns-sync-log-item-header {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 8px;
       font-size: 12px;
@@ -1801,6 +1802,7 @@
       .fns-sync-log-action {
         font-weight: bold;
         flex: 1;
+        min-width: 60px;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -1825,6 +1827,7 @@
 
       .fns-sync-log-header-right {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
         margin-left: auto;
@@ -1852,6 +1855,28 @@
           &.status-pending {
             color: var(--text-warning);
             animation: fns-loading-pulsate 1s infinite ease-in-out;
+
+            @media (prefers-reduced-motion: reduce) {
+              animation: none;
+            }
+          }
+        }
+
+        .fns-sync-log-retry-button {
+          padding: 3px 8px;
+          min-height: 28px;
+          color: var(--text-normal);
+          white-space: nowrap;
+          animation: none;
+
+          &:disabled {
+            color: var(--text-muted);
+            cursor: wait;
+          }
+
+          &:focus-visible {
+            outline: 2px solid var(--interactive-accent);
+            outline-offset: 2px;
           }
         }
       }
@@ -1905,6 +1930,18 @@
       font-size: 11px;
       margin-top: 4px;
       color: var(--text-normal);
+      overflow-wrap: anywhere;
+    }
+
+    .fns-sync-log-retry-message {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+      overflow-wrap: anywhere;
+
+      &.is-recovered {
+        color: var(--text-success);
+      }
     }
 
     &.fns-sync-log-category-note {
@@ -5162,4 +5199,31 @@ body .suggestion-container {
 
 .fns-clickable {
   cursor: pointer;
+}
+// Diagnostic IDs stay complete and copyable on narrow log panes.
+.fns-sync-log-trace-filter {
+  box-sizing: border-box;
+  width: calc(100% - 24px);
+  min-height: 32px;
+  margin: 0 12px 8px;
+}
+
+.fns-sync-log-trace {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-top: 6px;
+  padding: 4px 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: left;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  user-select: text;
+
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+  }
 }

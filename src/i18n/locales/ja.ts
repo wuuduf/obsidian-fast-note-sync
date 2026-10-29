@@ -2,6 +2,7 @@
 
 
 export default {
+  "ui.log.action.HttpRequest": "HTTP リクエスト",
   "fns.desc": "プライベートデプロイに対応し、マルチ端末でのノート、添付ファイル、設定のリアルタイム同期＆バックアッププラグイン。Mac、Windows、Android、iOS などのプラットフォームをサポートし、multi-language にも対応しています。",
 
   "setting.tab.general": "一般",

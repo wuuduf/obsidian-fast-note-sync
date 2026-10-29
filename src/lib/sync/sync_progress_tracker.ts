@@ -87,6 +87,7 @@ export class SyncProgressTracker {
    * 页完成回调，用于触发 sendSyncPageAck，使协议与 UI 渲染解耦。
    */
   onPageComplete?: (type: SyncType, pageIndex: number) => void;
+  onPageApplied?: (type: SyncType, pageIndex: number) => void;
 
   /**
    * Progress change callback, triggers status bar render.
@@ -230,6 +231,7 @@ export class SyncProgressTracker {
       if (prog.downloadPageDone >= prog.downloadPageCount && prog.downloadPageIndex !== -1) {
         const completedPage = prog.downloadPageIndex;
         prog.downloadPageIndex = -1; // Reset to avoid double triggering / 重置以防重复触发
+        this.onPageApplied?.(type, completedPage);
 
         // 如果最后一页已收到，无需发送最终确认 ACK (已由服务端主动销毁缓存)
         // If the last page has been received, no need to send final confirmation ACK (cache cleared by server)
@@ -267,6 +269,7 @@ export class SyncProgressTracker {
 
     bucket.completedCount++;
     prog.pageTaskCompleted++;
+    if (bucket.completedCount >= bucket.totalCount) this.onPageApplied?.(type, pageIndex);
 
     // 15s 无明细停滞重发 timer：每次真正入账一条明细就重置倒计时
     // Stagnation-resend timer: reset the countdown on every genuine detail accounting

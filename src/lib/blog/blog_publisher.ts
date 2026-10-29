@@ -28,12 +28,26 @@ const POST_DEFAULTS: Readonly<Record<string, PostDefaultValue>> = {
   passwordHint: "",
 };
 
+function localPublishedDate(type: "post" | "dynamic", value = new Date()): string {
+  const date = [
+    value.getFullYear(),
+    String(value.getMonth() + 1).padStart(2, "0"),
+    String(value.getDate()).padStart(2, "0"),
+  ].join("-");
+  if (type === "post") return date;
+  const time = [value.getHours(), value.getMinutes(), value.getSeconds()]
+    .map(part => String(part).padStart(2, "0"))
+    .join(":");
+  return `${date} ${time}`;
+}
+
 /**
  * Thin Obsidian-side adapter for the server-owned Firefly projection.
  * It only edits publication metadata and starts a server job; Git credentials,
  * transforms, commits and pushes deliberately remain on fast-note-sync-service.
  */
 export class BlogPublisher {
+  private readonly pendingPublishes = new Set<string>();
   constructor(private readonly plugin: FastSync) {}
 
   async markCurrentNote(type: "post" | "dynamic" = "post"): Promise<void> {
@@ -46,9 +60,7 @@ export class BlogPublisher {
       const isDynamic = type === "dynamic";
 
       if (!data.published) {
-        data.published = isDynamic
-          ? this.localDateTime(new Date())
-          : this.localDate(new Date());
+        data.published = localPublishedDate(type);
       }
 
       const slug = this.slugFor(data.published, file, current, type, data.slug);
@@ -60,8 +72,8 @@ export class BlogPublisher {
       } satisfies BlogFrontmatter;
 
       // Keep a flat slug as well. Obsidian's Properties view cannot edit
-      // nested objects such as `blog.slug`, while the server still treats the
-      // nested object as the publication source of truth.
+      // nested objects such as `blog.slug`; the server prefers this editable
+      // flat value and uses the nested value only as a legacy fallback.
       data.slug = slug;
 
       if (!isDynamic) {
@@ -93,6 +105,13 @@ export class BlogPublisher {
     await this.publish(file.path);
   }
 
+  /** Re-submit the current note after a transient server or Git failure. */
+  async retryCurrentNote(): Promise<void> {
+    const file = this.activeMarkdownFile();
+    if (!file) return;
+    await this.publish(file.path);
+  }
+
   async publishAll(): Promise<void> {
     await this.publish();
   }
@@ -109,14 +128,21 @@ export class BlogPublisher {
       return;
     }
 
+    const requestKey = JSON.stringify([this.plugin.settings.api, this.plugin.settings.vault, path ?? ""]);
+    if (this.pendingPublishes.has(requestKey)) return;
+    this.pendingPublishes.add(requestKey);
+
     try {
-      await this.plugin.api.executeBlogPublish(path);
-      new Notice(path
+      const result = await this.plugin.api.executeBlogPublish(path);
+      const message = path
         ? $("ui.blog.publish_started_note", { path })
-        : $("ui.blog.publish_started_all"));
+        : $("ui.blog.publish_started_all");
+      new Notice(result?.traceId ? `${message}\n诊断 ID: ${result.traceId}` : message, 8000);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       new Notice($("ui.blog.publish_failed", { message }), 8000);
+    } finally {
+      this.pendingPublishes.delete(requestKey);
     }
   }
 
@@ -156,14 +182,14 @@ export class BlogPublisher {
     type: "post" | "dynamic",
     topLevelSlug: unknown,
   ): string {
+    if ((current.type === type || type === "post") && typeof topLevelSlug === "string" && topLevelSlug.trim()) {
+      return topLevelSlug.trim();
+    }
     if (current.type === type && current.slug?.trim()) {
       return current.slug.trim();
     }
-    if (type === "post" && typeof topLevelSlug === "string" && topLevelSlug.trim()) {
-      return topLevelSlug.trim();
-    }
     if (type === "dynamic") {
-      return this.dynamicSlug(published) || this.localDateTime(new Date()).replace(" ", "-").replace(/:/g, "");
+      return this.dynamicSlug(published) || localPublishedDate("dynamic").replace(" ", "-").replace(/:/g, "");
     }
     return this.defaultSlug(file);
   }
@@ -176,23 +202,6 @@ export class BlogPublisher {
     const match = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}):(\d{2}))?/);
     if (!match) return "";
     return `${match[1]}-${match[2]}-${match[3]}-${match[4] || "00"}${match[5] || "00"}${match[6] || "00"}`;
-  }
-
-  private localDate(value: Date): string {
-    return [
-      value.getFullYear(),
-      String(value.getMonth() + 1).padStart(2, "0"),
-      String(value.getDate()).padStart(2, "0"),
-    ].join("-");
-  }
-
-  private localDateTime(value: Date): string {
-    const time = [
-      String(value.getHours()).padStart(2, "0"),
-      String(value.getMinutes()).padStart(2, "0"),
-      String(value.getSeconds()).padStart(2, "0"),
-    ].join(":");
-    return `${this.localDate(value)} ${time}`;
   }
 }
 
@@ -208,9 +217,9 @@ class BlogPropertiesModal extends Modal {
     const blog = frontmatter?.blog as Record<string, unknown> | undefined;
     this.enabled = typeof blog?.enabled === "boolean" ? blog.enabled : true;
     this.type = blog?.type === "dynamic" ? "dynamic" : "post";
-    this.slug = typeof blog?.slug === "string"
-      ? blog.slug
-      : (typeof frontmatter?.slug === "string" ? frontmatter.slug : file.basename);
+    this.slug = typeof frontmatter?.slug === "string" && frontmatter.slug.trim()
+      ? frontmatter.slug.trim()
+      : (typeof blog?.slug === "string" ? blog.slug : file.basename);
   }
 
   onOpen(): void {
@@ -252,7 +261,10 @@ class BlogPropertiesModal extends Modal {
         : {};
       data.blog = { ...existing, enabled: this.enabled, type: this.type, slug: this.slug };
       data.slug = this.slug;
-      if (this.type === "post" && typeof data.title !== "string") {
+      if (this.enabled && !data.published) {
+        data.published = localPublishedDate(this.type);
+      }
+      if (this.enabled && this.type === "post" && (typeof data.title !== "string" || !data.title.trim())) {
         data.title = this.file.basename;
       }
     });

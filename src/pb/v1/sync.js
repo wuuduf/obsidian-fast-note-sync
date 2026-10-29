@@ -33,6 +33,7 @@ export const proto = $root.proto = (() => {
              * @typedef {Object} proto.v1.WSMessage.$Properties
              * @property {string|null} [type] WSMessage type
              * @property {Uint8Array|null} [data] WSMessage data
+             * @property {string|null} [traceId] WSMessage traceId
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -81,6 +82,14 @@ export const proto = $root.proto = (() => {
             WSMessage.prototype.data = $util.newBuffer([]);
 
             /**
+             * WSMessage traceId.
+             * @member {string} traceId
+             * @memberof proto.v1.WSMessage
+             * @instance
+             */
+            WSMessage.prototype.traceId = "";
+
+            /**
              * Creates a new WSMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.WSMessage
@@ -116,6 +125,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.type);
                 if (message.data != null && $Object.hasOwnProperty.call(message, "data") && message.data.length)
                     writer.uint32(/* id 2, wireType 2 =*/18).bytes(message.data);
+                if (message.traceId != null && $Object.hasOwnProperty.call(message, "traceId") && message.traceId !== "")
+                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.traceId);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -181,6 +192,15 @@ export const proto = $root.proto = (() => {
                                 delete message.data;
                             continue;
                         }
+                    case 3: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.traceId = value;
+                            else
+                                delete message.traceId;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -230,6 +250,9 @@ export const proto = $root.proto = (() => {
                 if (message.data != null && $Object.hasOwnProperty.call(message, "data"))
                     if (!(message.data && typeof message.data.length === "number" || $util.isString(message.data)))
                         return "data: buffer expected";
+                if (message.traceId != null && $Object.hasOwnProperty.call(message, "traceId"))
+                    if (!$util.isString(message.traceId))
+                        return "traceId: string expected";
                 return null;
             };
 
@@ -260,6 +283,9 @@ export const proto = $root.proto = (() => {
                             $util.base64.decode(object.data, message.data = $util.newBuffer($util.base64.length(object.data)), 0);
                         else if (object.data.length >= 0)
                             message.data = object.data;
+                if (object.traceId != null)
+                    if (typeof object.traceId !== "string" || object.traceId.length)
+                        message.traceId = $String(object.traceId);
                 return message;
             };
 
@@ -289,11 +315,14 @@ export const proto = $root.proto = (() => {
                         if (options.bytes !== $Array)
                             object.data = $util.newBuffer(object.data);
                     }
+                    object.traceId = "";
                 }
                 if (message.type != null && $Object.hasOwnProperty.call(message, "type"))
                     object.type = message.type;
                 if (message.data != null && $Object.hasOwnProperty.call(message, "data"))
                     object.data = options.bytes === $String ? $util.base64.encode(message.data, 0, message.data.length) : options.bytes === $Array ? $Array.prototype.slice.call(message.data) : message.data;
+                if (message.traceId != null && $Object.hasOwnProperty.call(message, "traceId"))
+                    object.traceId = message.traceId;
                 return object;
             };
 
@@ -338,6 +367,7 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [vault] WSResponse vault
              * @property {string|null} [context] WSResponse context
              * @property {number|null} [pageIndex] WSResponse pageIndex
+             * @property {string|null} [traceId] WSResponse traceId
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -434,6 +464,14 @@ export const proto = $root.proto = (() => {
             WSResponse.prototype.pageIndex = 0;
 
             /**
+             * WSResponse traceId.
+             * @member {string} traceId
+             * @memberof proto.v1.WSResponse
+             * @instance
+             */
+            WSResponse.prototype.traceId = "";
+
+            /**
              * Creates a new WSResponse instance using the specified properties.
              * @function create
              * @memberof proto.v1.WSResponse
@@ -481,6 +519,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 7, wireType 2 =*/58).string(message.context);
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex") && message.pageIndex !== 0)
                     writer.uint32(/* id 8, wireType 0 =*/64).int32(message.pageIndex);
+                if (message.traceId != null && $Object.hasOwnProperty.call(message, "traceId") && message.traceId !== "")
+                    writer.uint32(/* id 9, wireType 2 =*/74).string(message.traceId);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -600,6 +640,15 @@ export const proto = $root.proto = (() => {
                                 delete message.pageIndex;
                             continue;
                         }
+                    case 9: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.traceId = value;
+                            else
+                                delete message.traceId;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -667,6 +716,9 @@ export const proto = $root.proto = (() => {
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     if (!$util.isInteger(message.pageIndex))
                         return "pageIndex: integer expected";
+                if (message.traceId != null && $Object.hasOwnProperty.call(message, "traceId"))
+                    if (!$util.isString(message.traceId))
+                        return "traceId: string expected";
                 return null;
             };
 
@@ -715,6 +767,9 @@ export const proto = $root.proto = (() => {
                 if (object.pageIndex != null)
                     if ($Number(object.pageIndex) !== 0)
                         message.pageIndex = object.pageIndex | 0;
+                if (object.traceId != null)
+                    if (typeof object.traceId !== "string" || object.traceId.length)
+                        message.traceId = $String(object.traceId);
                 return message;
             };
 
@@ -750,6 +805,7 @@ export const proto = $root.proto = (() => {
                     object.vault = "";
                     object.context = "";
                     object.pageIndex = 0;
+                    object.traceId = "";
                 }
                 if (message.code != null && $Object.hasOwnProperty.call(message, "code"))
                     object.code = message.code;
@@ -767,6 +823,8 @@ export const proto = $root.proto = (() => {
                     object.context = message.context;
                 if (message.pageIndex != null && $Object.hasOwnProperty.call(message, "pageIndex"))
                     object.pageIndex = message.pageIndex;
+                if (message.traceId != null && $Object.hasOwnProperty.call(message, "traceId"))
+                    object.traceId = message.traceId;
                 return object;
             };
 

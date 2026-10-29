@@ -1,3 +1,4 @@
+import { sourceTraceId } from "../utils/diagnostics";
 import { TFolder, normalizePath } from "obsidian";
 
 import { SyncEndData, FolderSyncRenameMessage } from "../utils/types";
@@ -152,10 +153,13 @@ export const folderRename = async function (folder: TFolder, oldPath: string, pl
 /**
  * 接收服务端文件夹修改通知
  */
-export const receiveFolderSyncModify = async function (data: { path: string, mtime?: number, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
+export const receiveFolderSyncModify = async function (data: { traceId?: string; context?: string; path: string, mtime?: number, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
+    const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+    const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+    const sourceVault = plugin.settings.vault;
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin)) {
-        plugin.recordSyncCompleted('folder', data.pageIndex)
+        plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
         return
     }
     dump(`Receive folder modify:`, data.path, data.pathHash)
@@ -171,7 +175,7 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
                     try {
                         await plugin.app.vault.createFolder(normalizedPath)
                     } catch (e) {
-                        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderModify')) {
+                        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderModify', traceId, sourceVault)) {
                             // 文件夹可能因并发创建已存在（Linux 上会抛 "Folder already exists"），忽略此错误
                             // Folder may already exist due to concurrent creation (Linux throws "Folder already exists"), ignore
                             dump(`Folder create ignored (may already exist): ${normalizedPath}`, e)
@@ -187,27 +191,30 @@ export const receiveFolderSyncModify = async function (data: { path: string, mti
         }, { maxRetries: 5, retryInterval: 100 });
     } catch (e) {
         dumpError(`[FastSync] Failed to receiveFolderSyncModify: ${normalizedPath}`, e);
-        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderModify')) {
-            SyncLogManager.getInstance().addLog('receive', 'FolderModify', e instanceof Error ? e.message : String(e), 'error', data.path);
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderModify', traceId, sourceVault)) {
+            SyncLogManager.getInstance().addLog('receive', 'FolderModify', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
         }
-        plugin.folderSyncTasks.failed++
+        if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.recordSyncCompleted('folder', data.pageIndex)
+        plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
     }
 }
 
 /**
  * 接收服务端文件夹删除通知
  */
-export const receiveFolderSyncDelete = async function (data: { path: string, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
+export const receiveFolderSyncDelete = async function (data: { traceId?: string; context?: string; path: string, lastTime?: number, pathHash?: string, pageIndex?: number }, plugin: FastSync) {
+    const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+    const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+    const sourceVault = plugin.settings.vault;
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin)) {
-        plugin.recordSyncCompleted('folder', data.pageIndex)
+        plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
         return
     }
     dump(`Receive folder delete:`, data.path, data.pathHash)
@@ -228,7 +235,7 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
                         // Folder still non-empty after timeout (e.g. pending downloads or new user files);
                         // skip the delete instead of force-recursing, wait for next sync round
                         dump(`[FastSync] Folder not empty after wait, skip delete: ${normalizedPath}`);
-                        SyncLogManager.getInstance().addLog('receive', 'FolderDeleteSkipped', `目录非空，跳过删除，等待下轮同步: ${normalizedPath}`, 'cancelled', data.path);
+                        SyncLogManager.getInstance().addLog('receive', 'FolderDeleteSkipped', `目录非空，跳过删除，等待下轮同步: ${normalizedPath}`, 'cancelled', data.path, sourceVault, { traceId });
                         return
                     }
                     // 记录待删除路径
@@ -245,15 +252,15 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
         }, { maxRetries: 10, retryInterval: 200 });
     } catch (e) {
         dumpError(`[FastSync] Failed to receiveFolderSyncDelete: ${normalizedPath}`, e);
-        SyncLogManager.getInstance().addLog('receive', 'FolderDelete', e instanceof Error ? e.message : String(e), 'error', data.path);
-        plugin.folderSyncTasks.failed++
+        SyncLogManager.getInstance().addLog('receive', 'FolderDelete', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
+        if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.recordSyncCompleted('folder', data.pageIndex)
+        plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
     }
 }
 
@@ -261,9 +268,12 @@ export const receiveFolderSyncDelete = async function (data: { path: string, las
  * 接收服务端文件夹重命名通知
  */
 export const receiveFolderSyncRename = async function (data: FolderSyncRenameMessage, plugin: FastSync) {
+    const sourceContext = data.context ?? plugin.syncState.activeSyncContext ?? "";
+    const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
+    const sourceVault = plugin.settings.vault;
     if (plugin.settings.syncEnabled == false) return
     if (isFolderSyncPathExcluded(data.path, plugin) || isFolderSyncPathExcluded(data.oldPath, plugin)) {
-        plugin.recordSyncCompleted('folder', data.pageIndex)
+        plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
         return
     }
 
@@ -304,7 +314,7 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
                     try {
                         await plugin.app.vault.createFolder(normalizedNewPath)
                     } catch (e) {
-                        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename')) {
+                        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename', traceId, sourceVault)) {
                             dump(`Folder create ignored (may already exist): ${normalizedNewPath}`, e)
                         }
                     }
@@ -314,17 +324,17 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
         }, { maxRetries: 10, retryInterval: 100 });
     } catch (e) {
         dumpError(`[FastSync] Failed to receiveFolderSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e);
-        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename')) {
-            SyncLogManager.getInstance().addLog('receive', 'FolderRename', e instanceof Error ? e.message : String(e), 'error', data.path);
+        if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename', traceId, sourceVault)) {
+            SyncLogManager.getInstance().addLog('receive', 'FolderRename', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
         }
-        plugin.folderSyncTasks.failed++
+        if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.folderSyncTasks.failed++
     } finally {
         // 实时更新同步时间戳，与 note 端保持一致
         // Update sync timestamp in real time, consistent with note side
         if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
             plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
         }
-        plugin.recordSyncCompleted('folder', data.pageIndex)
+        plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
     }
 }
 

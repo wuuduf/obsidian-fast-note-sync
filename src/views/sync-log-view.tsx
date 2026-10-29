@@ -160,6 +160,7 @@ const SyncSummaryCard = ({ log }: { log: SyncLog }) => {
                     {renderRow("dot-config", $("ui.log.category_config") || "配置", config)}
                 </div>
             )}
+            <TraceIdButton traceId={log.traceId} />
         </div>
     );
 };
@@ -282,8 +283,26 @@ const SyncProgressBanner = ({ plugin }: { plugin: FastSync }) => {
     );
 };
 
-const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
+const TraceIdButton = ({ traceId }: { traceId?: string }) => traceId ? (
+    <button type="button" className="fns-sync-log-trace" title="复制诊断 ID" aria-label={`复制诊断 ID：${traceId}`}
+        onClick={() => {
+            void navigator.clipboard.writeText(traceId).then(() => new Notice('诊断 ID 已复制'), () => new Notice('复制失败，请选择诊断 ID 后手动复制'));
+        }}>诊断 ID：{traceId}</button>
+) : null;
+
+export const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
     const [logs, setLogs] = React.useState<SyncLog[]>([]);
+    const retryClicks = React.useRef(new Set<string>());
+    React.useEffect(() => {
+        for (const id of retryClicks.current) {
+            if (logs.find((log) => log.id === id)?.retryState !== 'retrying') retryClicks.current.delete(id);
+        }
+    }, [logs]);
+    const retryLog = (log: SyncLog) => {
+        if (log.retryState === 'retrying' || retryClicks.current.has(log.id)) return;
+        retryClicks.current.add(log.id);
+        if (plugin.retryFailedLog(log.id) === false) retryClicks.current.delete(log.id);
+    };
 
     const handleConflictLogClick = async (log: SyncLog) => {
         try {
@@ -340,6 +359,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
     // 筛选与分页状态
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     const [typeFilter, setTypeFilter] = React.useState<string>('all');
+    const [traceFilter, setTraceFilter] = React.useState('');
     // "仅看失败"：懒初始化时消费一次 SyncLogManager 上挂起的标记（状态栏点红点跳转时设置）
     // "Failed only": lazily consume the pending flag set on SyncLogManager once (set when jumping
     // in from the status bar red dot)
@@ -432,13 +452,14 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = 0; // 切换筛选/分页时回到顶部
         }
-    }, [currentPage, categoryFilter, typeFilter, onlyFailed]);
+    }, [currentPage, categoryFilter, typeFilter, onlyFailed, traceFilter]);
 
     // 筛选逻辑
     const filteredLogs = React.useMemo(() => {
         const list = logs.filter(log => {
             const matchVault = !log.vault || log.vault === plugin.settings.vault;
             if (!matchVault) return false;
+            if (traceFilter.trim() && !log.traceId?.toLowerCase().includes(traceFilter.trim().toLowerCase())) return false;
 
             // "仅看失败"独立于类别/方向筛选：只看失败项，跳过小结/扫描等非失败卡片
             // "Failed only" is independent of category/direction filters: only failed items,
@@ -467,7 +488,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
             }
             return b.timestamp - a.timestamp;
         });
-    }, [logs, categoryFilter, typeFilter, onlyFailed, plugin.settings.vault]);
+    }, [logs, categoryFilter, typeFilter, onlyFailed, traceFilter, plugin.settings.vault]);
 
     // 分页逻辑
     const paginatedLogs = React.useMemo(() => {
@@ -686,6 +707,8 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                 </div>
             )}
 
+            <input className="fns-sync-log-trace-filter" type="search" aria-label="按诊断 ID 筛选" placeholder="按诊断 ID 筛选"
+                value={traceFilter} onChange={event => { setTraceFilter(event.target.value); setCurrentPage(1); }} />
             <div className="fns-sync-log-list" ref={scrollRef}>
                 {paginatedLogs.length === 0 ? (
                     <div className="fns-sync-log-empty">{$("ui.log.empty")}</div>
@@ -699,7 +722,7 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                         // 如果是成功完成的哈希扫描，以卡片形式渲染
                         // If it is a successfully completed hash scan, render it as a card
                         if (log.action.startsWith('VaultScanning') && log.status === 'success') {
-                            return <VaultScanningSummaryCard key={log.id} log={log} />;
+                            return <div key={log.id}><VaultScanningSummaryCard log={log} /><TraceIdButton traceId={log.traceId} /></div>;
                         }
                         // 判断是否为删除操作或配置日志。如果是，则点击时复制路径；否则打开文件。
                         // Determine if it is a delete operation or configuration log. If so, copy the path on click; otherwise, open the file.
@@ -763,12 +786,21 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                                     <div className="fns-sync-log-message" style={{ color: 'var(--text-muted)' }}>
                                         {displayMessage}
                                     </div>
+                                    <TraceIdButton traceId={log.traceId} />
                                 </div>
                             );
                         }
 
+                        const retrying = log.retryState === 'retrying';
+                        const recovered = log.retryState === 'recovered';
+                        const needsRestart = log.retryState === 'restart-required' || !log.retryType || !log.retryContext || log.retryPageIndex === undefined;
+                        const retryLabel = retrying ? '等待完成' : needsRestart ? (log.retryState === 'restart-required' ? '重新同步' : '重启同步') : '重试此页';
+                        const retryStatus = retrying ? 'pending' : recovered ? 'success' : log.status;
+                        const retryStatusLabel = retrying ? '重试中' : recovered ? '已恢复' : log.retryState === 'failed' ? (log.retryAttempts ? '重试失败' : '可重试') : log.retryState === 'restart-required' ? '需重新同步' : null;
+                        const retryMessage = log.retryMessage || (log.retryState === 'restart-required' ? '分页缓存已失效，请重新同步以继续。' : '');
+                        const canRetry = !recovered && (retrying || log.retryable || log.retryState === 'restart-required' || log.retryState === 'failed');
                         return (
-                            <div key={log.id} className={`fns-sync-log-item fns-sync-log-category-${log.category} fns-sync-log-status-${log.status} fns-sync-log-type-${log.type}`}>
+                            <div key={log.id} className={`fns-sync-log-item fns-sync-log-category-${log.category} fns-sync-log-status-${retryStatus} fns-sync-log-type-${log.type}`}>
                                 <div className="fns-sync-log-item-header">
                                     <span className="fns-sync-log-time">{safeMoment(log.timestamp).format("HH:mm:ss")}</span>
                                     <span className="fns-sync-log-action">{$(`ui.log.action.${log.action}` as Parameters<typeof $>[0])}</span>
@@ -784,9 +816,25 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                                         {log.progress !== undefined && (log.status === 'pending' || (log.status === 'success' && log.progress === 100)) && (
                                             <span className="fns-sync-log-progress-percentage">{log.progress}%</span>
                                         )}
-                                        <span className={`fns-sync-log-status-tag status-${log.status}`}>
-                                            {log.status === 'success' ? '✓' : log.status === 'error' ? '✗' : '...'}
+                                        <span className={`fns-sync-log-status-tag status-${retryStatus}`}>
+                                            {retryStatusLabel || (log.status === 'success' ? '✓' : log.status === 'error' ? '✗' : '...')}
                                         </span>
+                                        {canRetry && (
+                                            <button
+                                                type="button"
+                                                className="fns-sync-log-status-tag fns-sync-log-retry-button"
+                                                disabled={retrying}
+                                                aria-busy={retrying}
+                                                aria-label={`${retryLabel}：${log.path || '此条失败记录'}`}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    retryLog(log);
+                                                }}
+                                                title={retrying ? '正在处理，请等待完成' : needsRestart ? '启动新一轮同步以恢复失败记录' : '只重试当前失败分页'}
+                                            >
+                                                {retryLabel}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                                 {log.path && (
@@ -812,6 +860,8 @@ const SyncLogComponent = ({ plugin }: { plugin: FastSync }) => {
                                     </div>
                                 )}
                                 {log.message && !['成功', 'success'].includes(log.message.toLowerCase()) && <div className="fns-sync-log-message">{log.message}</div>}
+                                {retryMessage && <div className={`fns-sync-log-retry-message ${recovered ? 'is-recovered' : ''}`} role="status" aria-live="polite">{retryMessage}</div>}
+                                <TraceIdButton traceId={log.traceId} />
                             </div>
                         );
                     })

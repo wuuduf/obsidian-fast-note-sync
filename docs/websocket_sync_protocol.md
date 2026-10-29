@@ -124,3 +124,26 @@
 - **0~35 字节**: `SessionID` (UUID 字符串)
 - **36~39 字节**: `ChunkIndex` (uint32, 大端序)
 - **40 字节开始**: 分块原始数据
+
+## 5. 失败分页重试与缓存过期
+
+正文读取失败时，服务端返回 code `439`，`data` 包含 `retryable: true`、`resourceType` 和 0-based `pageIndex`，外层保留 `context`、`vault`。客户端发送对应的 `Note/File/Setting/FolderSyncPageAck`，`pageIndex` 为失败页减一（第 0 页使用 `-1`），请求重发该页。收到分页不代表恢复成功，需要等待本地处理完成。
+
+下载缓存不存在、超过 10 分钟未更新或不属于请求 vault 时，返回如下结构；即使连接使用 Protobuf，未带 action 的错误也会以现有 JSON 通道传输，客户端不能依赖 action 才记日志：
+
+```json
+{
+  "code": 439,
+  "context": "original-sync-context",
+  "vault": "MyVault",
+  "data": {
+    "retryable": false,
+    "restartRequired": true,
+    "reason": "download_cache_expired",
+    "resourceType": "note",
+    "pageIndex": 2
+  }
+}
+```
+
+客户端把该回执关联到原失败条目，释放单页重试锁并提供新一轮全量比对入口；不把无关联的迟到过期回执当成新的用户错误。正常末页发送后，服务端保留轻量完成标记（10 分钟、最多 1024 条），使流水线中迟到的普通 ACK 继续静默处理，兼容旧客户端。此错误对象的内层页码为 0-based，与分页明细信封的 1-based `pageIndex` 含义不同。

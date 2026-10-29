@@ -31,6 +31,9 @@ export namespace proto {
             /** WSMessage data. */
             data: Uint8Array;
 
+            /** WSMessage traceId. */
+            traceId: string;
+
             /**
              * Creates a new WSMessage instance using the specified properties.
              * @param [properties] Properties to set
@@ -121,6 +124,9 @@ export namespace proto {
                 /** WSMessage data */
                 data?: (Uint8Array|null);
 
+                /** WSMessage traceId */
+                traceId?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -170,6 +176,9 @@ export namespace proto {
 
             /** WSResponse pageIndex. */
             pageIndex: number;
+
+            /** WSResponse traceId. */
+            traceId: string;
 
             /**
              * Creates a new WSResponse instance using the specified properties.
@@ -278,6 +287,9 @@ export namespace proto {
 
                 /** WSResponse pageIndex */
                 pageIndex?: (number|null);
+
+                /** WSResponse traceId */
+                traceId?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];

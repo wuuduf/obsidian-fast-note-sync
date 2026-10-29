@@ -1,5 +1,6 @@
 import * as WSAction from "../lib/sync/websocket_action";
 import { proto } from "./v1/sync";
+import { validTraceId } from "../lib/utils/diagnostics";
 
 
 /**
@@ -557,7 +558,8 @@ export function enSendDTOToProtobuf(action: WSAction.WSSendAction, payload: unkn
     const innerBytes = enSendDataPayload(action, payload);
     const wsMsg = proto.v1.WSMessage.create({
         type: action,
-        data: innerBytes
+        data: innerBytes,
+        traceId: validTraceId(typeof payload === 'object' && payload !== null ? (payload as Record<string, unknown>).traceId : undefined)
     });
     return proto.v1.WSMessage.encode(wsMsg).finish();
 }
@@ -571,6 +573,7 @@ export interface DeserializedWSResponse {
     details: string;
     vault: string;
     context: string;
+    traceId: string;
     // WSResponse 信封 pageIndex，线上值为 1-based：0/undefined=非分页消息，n>0=下载第 n-1 页。
     // 原始值在此透传，1-based→0-based 的转换统一在 websocket_manager.ts 做（见其注释）。
     // WSResponse envelope pageIndex, wire value is 1-based: 0/undefined=non-paginated message,
@@ -600,6 +603,7 @@ export function deReceivePacket(data: Uint8Array): DeserializedWSResponse {
         details: wsResp.details || "",
         vault: wsResp.vault || "",
         context: wsResp.context || "",
+        traceId: validTraceId(wsResp.traceId) || validTraceId(wsMsg.traceId) || "",
         pageIndex: wsResp.pageIndex || 0
     };
 }

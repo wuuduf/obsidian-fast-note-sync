@@ -59,6 +59,7 @@ export class WebSocketClient {
   private hasNotifiedReconnectFailure = false;
   public count = 0;
   private registerPromise: Promise<void> | null = null;
+  private registrationVersion = 0;
   public isRegister = true;
   
   private statusListeners: Set<(status: boolean) => void> = new Set();
@@ -147,15 +148,16 @@ export class WebSocketClient {
       return;
     }
 
-    this.registerPromise = this._doRegister();
+    const registration = this._doRegister(++this.registrationVersion);
+    this.registerPromise = registration;
     try {
-      await this.registerPromise;
+      await registration;
     } finally {
-      this.registerPromise = null;
+      if (this.registerPromise === registration) this.registerPromise = null;
     }
   }
 
-  private async _doRegister() {
+  private async _doRegister(version: number) {
     if (this.ws) {
       this.cleanupWebSocket(this.ws);
     }
@@ -164,6 +166,7 @@ export class WebSocketClient {
 
     if (this.options.preConnectProbe) {
       const isHealthy = await this.options.preConnectProbe();
+      if (version !== this.registrationVersion) return;
       if (!isHealthy) {
         dump("Health check failed before ws connect, scheduling reconnect...");
         this.isOpen = false;
@@ -312,6 +315,10 @@ export class WebSocketClient {
   }
 
   public unRegister(setUnregistered = false) {
+    // An in-flight probe belongs to the old connection, even if it resolves
+    // after a fresh registration has already started.
+    this.registrationVersion++;
+    this.registerPromise = null;
     window.clearTimeout(this.checkReConnectTimeout);
     this.timeConnect = 0;
     this.hasNotifiedReconnectFailure = false;
@@ -357,6 +364,7 @@ export class WebSocketClient {
   }
 
   public triggerReconnect() {
+    if (!this.isRegister) return;
     dump("Triggering manual reconnect due to network change");
     this.timeConnect = 0;
     this.hasNotifiedReconnectFailure = false;
@@ -364,14 +372,13 @@ export class WebSocketClient {
     void this.register();
   }
 
-  private async waitForBufferDrain(maxBufferSize = 5 * 1024 * 1024): Promise<void> {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    while (this.ws.bufferedAmount > maxBufferSize) {
+  private async waitForBufferDrain(socket: WebSocket, maxBufferSize = 5 * 1024 * 1024): Promise<boolean> {
+    if (!socket) return false;
+    while (this.ws === socket && socket.readyState === WebSocket.OPEN) {
+      if (socket.bufferedAmount <= maxBufferSize) return true;
       await new Promise(resolve => window.setTimeout(resolve, 50));
     }
+    return false;
   }
 
   public async SendMessage(action: string, data: unknown, before?: () => boolean, after?: () => void) {
@@ -379,7 +386,8 @@ export class WebSocketClient {
       return true; // Cancelled
     }
 
-    await this.waitForBufferDrain();
+    const socket = this.ws;
+    if (!await this.waitForBufferDrain(socket) || this.ws !== socket || socket.readyState !== WebSocket.OPEN) return;
 
     this.Send(action, data, () => {
       after?.();
@@ -448,11 +456,12 @@ export class WebSocketClient {
       return 'cancelled';
     }
 
-    await this.waitForBufferDrain();
+    const socket = this.ws;
+    const drained = await this.waitForBufferDrain(socket);
 
     // 等待缓冲区排空期间连接可能已断开，发送前再次确认，避免对已关闭的 socket 调用 send()
     // Connection may have dropped while waiting for the buffer to drain; re-check before sending
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!drained || this.ws !== socket || socket.readyState !== WebSocket.OPEN) {
       return 'closed';
     }
 
