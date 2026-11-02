@@ -3279,6 +3279,9 @@ export namespace proto {
             /** FileSyncRequest totalBatches. */
             totalBatches: number;
 
+            /** FileSyncRequest protectedFiles. */
+            protectedFiles: proto.v1.FileSyncDelFile.$Properties[];
+
             /**
              * Creates a new FileSyncRequest instance using the specified properties.
              * @param [properties] Properties to set
@@ -3387,6 +3390,9 @@ export namespace proto {
                 /** FileSyncRequest totalBatches */
                 totalBatches?: (number|null);
 
+                /** FileSyncRequest protectedFiles */
+                protectedFiles?: (proto.v1.FileSyncDelFile.$Properties[]|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -3430,6 +3436,27 @@ export namespace proto {
 
             /** FileSyncCheckRequest ctime. */
             ctime: (number|Long);
+
+            /** FileSyncCheckRequest snapshotSha256. */
+            snapshotSha256: string;
+
+            /** FileSyncCheckRequest resumeSessionId. */
+            resumeSessionId: string;
+
+            /** FileSyncCheckRequest baseHash. */
+            baseHash: string;
+
+            /** FileSyncCheckRequest baseHashMissing. */
+            baseHashMissing: boolean;
+
+            /** FileSyncCheckRequest baseSha256. */
+            baseSha256: string;
+
+            /** FileSyncCheckRequest baseVersion. */
+            baseVersion: string;
+
+            /** FileSyncCheckRequest versionGuard. */
+            versionGuard: boolean;
 
             /**
              * Creates a new FileSyncCheckRequest instance using the specified properties.
@@ -3533,6 +3560,27 @@ export namespace proto {
                 /** FileSyncCheckRequest ctime */
                 ctime?: (number|Long|null);
 
+                /** FileSyncCheckRequest snapshotSha256 */
+                snapshotSha256?: (string|null);
+
+                /** FileSyncCheckRequest resumeSessionId */
+                resumeSessionId?: (string|null);
+
+                /** FileSyncCheckRequest baseHash */
+                baseHash?: (string|null);
+
+                /** FileSyncCheckRequest baseHashMissing */
+                baseHashMissing?: (boolean|null);
+
+                /** FileSyncCheckRequest baseSha256 */
+                baseSha256?: (string|null);
+
+                /** FileSyncCheckRequest baseVersion */
+                baseVersion?: (string|null);
+
+                /** FileSyncCheckRequest versionGuard */
+                versionGuard?: (boolean|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -3564,6 +3612,18 @@ export namespace proto {
 
             /** FileSyncDelFile pathHash. */
             pathHash: string;
+
+            /** FileSyncDelFile baseSha256. */
+            baseSha256: string;
+
+            /** FileSyncDelFile baseHashMissing. */
+            baseHashMissing: boolean;
+
+            /** FileSyncDelFile baseVersion. */
+            baseVersion: string;
+
+            /** FileSyncDelFile versionGuard. */
+            versionGuard: boolean;
 
             /**
              * Creates a new FileSyncDelFile instance using the specified properties.
@@ -3655,6 +3715,18 @@ export namespace proto {
                 /** FileSyncDelFile pathHash */
                 pathHash?: (string|null);
 
+                /** FileSyncDelFile baseSha256 */
+                baseSha256?: (string|null);
+
+                /** FileSyncDelFile baseHashMissing */
+                baseHashMissing?: (boolean|null);
+
+                /** FileSyncDelFile baseVersion */
+                baseVersion?: (string|null);
+
+                /** FileSyncDelFile versionGuard */
+                versionGuard?: (boolean|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -3704,6 +3776,27 @@ export namespace proto {
 
             /** FileUploadCheckRequest context. */
             context: string;
+
+            /** FileUploadCheckRequest snapshotSha256. */
+            snapshotSha256: string;
+
+            /** FileUploadCheckRequest resumeSessionId. */
+            resumeSessionId: string;
+
+            /** FileUploadCheckRequest baseHash. */
+            baseHash: string;
+
+            /** FileUploadCheckRequest baseHashMissing. */
+            baseHashMissing: boolean;
+
+            /** FileUploadCheckRequest baseSha256. */
+            baseSha256: string;
+
+            /** FileUploadCheckRequest baseVersion. */
+            baseVersion: string;
+
+            /** FileUploadCheckRequest versionGuard. */
+            versionGuard: boolean;
 
             /**
              * Creates a new FileUploadCheckRequest instance using the specified properties.
@@ -3813,12 +3906,605 @@ export namespace proto {
                 /** FileUploadCheckRequest context */
                 context?: (string|null);
 
+                /** FileUploadCheckRequest snapshotSha256 */
+                snapshotSha256?: (string|null);
+
+                /** FileUploadCheckRequest resumeSessionId */
+                resumeSessionId?: (string|null);
+
+                /** FileUploadCheckRequest baseHash */
+                baseHash?: (string|null);
+
+                /** FileUploadCheckRequest baseHashMissing */
+                baseHashMissing?: (boolean|null);
+
+                /** FileUploadCheckRequest baseSha256 */
+                baseSha256?: (string|null);
+
+                /** FileUploadCheckRequest baseVersion */
+                baseVersion?: (string|null);
+
+                /** FileUploadCheckRequest versionGuard */
+                versionGuard?: (boolean|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
 
             /** Shape of a FileUploadCheckRequest. */
             type $Shape = proto.v1.FileUploadCheckRequest.$Properties;
+        }
+
+        /**
+         * Properties of a FileConflictMessage.
+         * @deprecated Use proto.v1.FileConflictMessage.$Properties instead.
+         */
+        type IFileConflictMessage = proto.v1.FileConflictMessage.$Properties;
+
+        /** Represents a FileConflictMessage. */
+        class FileConflictMessage {
+
+            /**
+             * Constructs a new FileConflictMessage.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.FileConflictMessage.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** FileConflictMessage path. */
+            path: string;
+
+            /** FileConflictMessage pathHash. */
+            pathHash: string;
+
+            /** FileConflictMessage sessionId. */
+            sessionId: string;
+
+            /** FileConflictMessage remoteSha256. */
+            remoteSha256: string;
+
+            /** FileConflictMessage incomingSha256. */
+            incomingSha256: string;
+
+            /** FileConflictMessage reason. */
+            reason: string;
+
+            /** FileConflictMessage conflictPath. */
+            conflictPath: string;
+
+            /** FileConflictMessage remoteVersion. */
+            remoteVersion: string;
+
+            /**
+             * Creates a new FileConflictMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns FileConflictMessage instance
+             */
+            static create(properties: proto.v1.FileConflictMessage.$Shape): proto.v1.FileConflictMessage & proto.v1.FileConflictMessage.$Shape;
+            static create(properties?: proto.v1.FileConflictMessage.$Properties): proto.v1.FileConflictMessage;
+
+            /**
+             * Encodes the specified FileConflictMessage message. Does not implicitly {@link proto.v1.FileConflictMessage.verify|verify} messages.
+             * @param message FileConflictMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.FileConflictMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified FileConflictMessage message, length delimited. Does not implicitly {@link proto.v1.FileConflictMessage.verify|verify} messages.
+             * @param message FileConflictMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.FileConflictMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a FileConflictMessage message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.FileConflictMessage & proto.v1.FileConflictMessage.$Shape} FileConflictMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.FileConflictMessage & proto.v1.FileConflictMessage.$Shape;
+
+            /**
+             * Decodes a FileConflictMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.FileConflictMessage & proto.v1.FileConflictMessage.$Shape} FileConflictMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.FileConflictMessage & proto.v1.FileConflictMessage.$Shape;
+
+            /**
+             * Verifies a FileConflictMessage message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a FileConflictMessage message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns FileConflictMessage
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.FileConflictMessage;
+
+            /**
+             * Creates a plain object from a FileConflictMessage message. Also converts values to other types if specified.
+             * @param message FileConflictMessage
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.FileConflictMessage, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this FileConflictMessage to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for FileConflictMessage
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace FileConflictMessage {
+
+            /** Properties of a FileConflictMessage. */
+            interface $Properties {
+
+                /** FileConflictMessage path */
+                path?: (string|null);
+
+                /** FileConflictMessage pathHash */
+                pathHash?: (string|null);
+
+                /** FileConflictMessage sessionId */
+                sessionId?: (string|null);
+
+                /** FileConflictMessage remoteSha256 */
+                remoteSha256?: (string|null);
+
+                /** FileConflictMessage incomingSha256 */
+                incomingSha256?: (string|null);
+
+                /** FileConflictMessage reason */
+                reason?: (string|null);
+
+                /** FileConflictMessage conflictPath */
+                conflictPath?: (string|null);
+
+                /** FileConflictMessage remoteVersion */
+                remoteVersion?: (string|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a FileConflictMessage. */
+            type $Shape = proto.v1.FileConflictMessage.$Properties;
+        }
+
+        /**
+         * Properties of a FileBaselineMessage.
+         * @deprecated Use proto.v1.FileBaselineMessage.$Properties instead.
+         */
+        type IFileBaselineMessage = proto.v1.FileBaselineMessage.$Properties;
+
+        /** Represents a FileBaselineMessage. */
+        class FileBaselineMessage {
+
+            /**
+             * Constructs a new FileBaselineMessage.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.FileBaselineMessage.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** FileBaselineMessage path. */
+            path: string;
+
+            /** FileBaselineMessage pathHash. */
+            pathHash: string;
+
+            /** FileBaselineMessage snapshotSha256. */
+            snapshotSha256: string;
+
+            /** FileBaselineMessage fileVersion. */
+            fileVersion: string;
+
+            /**
+             * Creates a new FileBaselineMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns FileBaselineMessage instance
+             */
+            static create(properties: proto.v1.FileBaselineMessage.$Shape): proto.v1.FileBaselineMessage & proto.v1.FileBaselineMessage.$Shape;
+            static create(properties?: proto.v1.FileBaselineMessage.$Properties): proto.v1.FileBaselineMessage;
+
+            /**
+             * Encodes the specified FileBaselineMessage message. Does not implicitly {@link proto.v1.FileBaselineMessage.verify|verify} messages.
+             * @param message FileBaselineMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.FileBaselineMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified FileBaselineMessage message, length delimited. Does not implicitly {@link proto.v1.FileBaselineMessage.verify|verify} messages.
+             * @param message FileBaselineMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.FileBaselineMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a FileBaselineMessage message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.FileBaselineMessage & proto.v1.FileBaselineMessage.$Shape} FileBaselineMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.FileBaselineMessage & proto.v1.FileBaselineMessage.$Shape;
+
+            /**
+             * Decodes a FileBaselineMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.FileBaselineMessage & proto.v1.FileBaselineMessage.$Shape} FileBaselineMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.FileBaselineMessage & proto.v1.FileBaselineMessage.$Shape;
+
+            /**
+             * Verifies a FileBaselineMessage message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a FileBaselineMessage message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns FileBaselineMessage
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.FileBaselineMessage;
+
+            /**
+             * Creates a plain object from a FileBaselineMessage message. Also converts values to other types if specified.
+             * @param message FileBaselineMessage
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.FileBaselineMessage, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this FileBaselineMessage to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for FileBaselineMessage
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace FileBaselineMessage {
+
+            /** Properties of a FileBaselineMessage. */
+            interface $Properties {
+
+                /** FileBaselineMessage path */
+                path?: (string|null);
+
+                /** FileBaselineMessage pathHash */
+                pathHash?: (string|null);
+
+                /** FileBaselineMessage snapshotSha256 */
+                snapshotSha256?: (string|null);
+
+                /** FileBaselineMessage fileVersion */
+                fileVersion?: (string|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a FileBaselineMessage. */
+            type $Shape = proto.v1.FileBaselineMessage.$Properties;
+        }
+
+        /**
+         * Properties of a FileUploadPrepareRequest.
+         * @deprecated Use proto.v1.FileUploadPrepareRequest.$Properties instead.
+         */
+        type IFileUploadPrepareRequest = proto.v1.FileUploadPrepareRequest.$Properties;
+
+        /** Represents a FileUploadPrepareRequest. */
+        class FileUploadPrepareRequest {
+
+            /**
+             * Constructs a new FileUploadPrepareRequest.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.FileUploadPrepareRequest.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** FileUploadPrepareRequest sessionId. */
+            sessionId: string;
+
+            /** FileUploadPrepareRequest sha256. */
+            sha256: string;
+
+            /** FileUploadPrepareRequest contentHash. */
+            contentHash: string;
+
+            /** FileUploadPrepareRequest size. */
+            size: (number|Long);
+
+            /** FileUploadPrepareRequest mtime. */
+            mtime: (number|Long);
+
+            /** FileUploadPrepareRequest ctime. */
+            ctime: (number|Long);
+
+            /** FileUploadPrepareRequest context. */
+            context: string;
+
+            /** FileUploadPrepareRequest baseVersion. */
+            baseVersion: string;
+
+            /** FileUploadPrepareRequest versionGuard. */
+            versionGuard: boolean;
+
+            /**
+             * Creates a new FileUploadPrepareRequest instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns FileUploadPrepareRequest instance
+             */
+            static create(properties: proto.v1.FileUploadPrepareRequest.$Shape): proto.v1.FileUploadPrepareRequest & proto.v1.FileUploadPrepareRequest.$Shape;
+            static create(properties?: proto.v1.FileUploadPrepareRequest.$Properties): proto.v1.FileUploadPrepareRequest;
+
+            /**
+             * Encodes the specified FileUploadPrepareRequest message. Does not implicitly {@link proto.v1.FileUploadPrepareRequest.verify|verify} messages.
+             * @param message FileUploadPrepareRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.FileUploadPrepareRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified FileUploadPrepareRequest message, length delimited. Does not implicitly {@link proto.v1.FileUploadPrepareRequest.verify|verify} messages.
+             * @param message FileUploadPrepareRequest message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.FileUploadPrepareRequest.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a FileUploadPrepareRequest message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.FileUploadPrepareRequest & proto.v1.FileUploadPrepareRequest.$Shape} FileUploadPrepareRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.FileUploadPrepareRequest & proto.v1.FileUploadPrepareRequest.$Shape;
+
+            /**
+             * Decodes a FileUploadPrepareRequest message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.FileUploadPrepareRequest & proto.v1.FileUploadPrepareRequest.$Shape} FileUploadPrepareRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.FileUploadPrepareRequest & proto.v1.FileUploadPrepareRequest.$Shape;
+
+            /**
+             * Verifies a FileUploadPrepareRequest message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a FileUploadPrepareRequest message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns FileUploadPrepareRequest
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.FileUploadPrepareRequest;
+
+            /**
+             * Creates a plain object from a FileUploadPrepareRequest message. Also converts values to other types if specified.
+             * @param message FileUploadPrepareRequest
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.FileUploadPrepareRequest, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this FileUploadPrepareRequest to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for FileUploadPrepareRequest
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace FileUploadPrepareRequest {
+
+            /** Properties of a FileUploadPrepareRequest. */
+            interface $Properties {
+
+                /** FileUploadPrepareRequest sessionId */
+                sessionId?: (string|null);
+
+                /** FileUploadPrepareRequest sha256 */
+                sha256?: (string|null);
+
+                /** FileUploadPrepareRequest contentHash */
+                contentHash?: (string|null);
+
+                /** FileUploadPrepareRequest size */
+                size?: (number|Long|null);
+
+                /** FileUploadPrepareRequest mtime */
+                mtime?: (number|Long|null);
+
+                /** FileUploadPrepareRequest ctime */
+                ctime?: (number|Long|null);
+
+                /** FileUploadPrepareRequest context */
+                context?: (string|null);
+
+                /** FileUploadPrepareRequest baseVersion */
+                baseVersion?: (string|null);
+
+                /** FileUploadPrepareRequest versionGuard */
+                versionGuard?: (boolean|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a FileUploadPrepareRequest. */
+            type $Shape = proto.v1.FileUploadPrepareRequest.$Properties;
+        }
+
+        /**
+         * Properties of a FileUploadReadyMessage.
+         * @deprecated Use proto.v1.FileUploadReadyMessage.$Properties instead.
+         */
+        type IFileUploadReadyMessage = proto.v1.FileUploadReadyMessage.$Properties;
+
+        /** Represents a FileUploadReadyMessage. */
+        class FileUploadReadyMessage {
+
+            /**
+             * Constructs a new FileUploadReadyMessage.
+             * @param [properties] Properties to set
+             */
+            constructor(properties?: proto.v1.FileUploadReadyMessage.$Properties);
+
+            /** Unknown fields preserved while decoding when enabled */
+            $unknowns?: Uint8Array[];
+
+            /** FileUploadReadyMessage sessionId. */
+            sessionId: string;
+
+            /**
+             * Creates a new FileUploadReadyMessage instance using the specified properties.
+             * @param [properties] Properties to set
+             * @returns FileUploadReadyMessage instance
+             */
+            static create(properties: proto.v1.FileUploadReadyMessage.$Shape): proto.v1.FileUploadReadyMessage & proto.v1.FileUploadReadyMessage.$Shape;
+            static create(properties?: proto.v1.FileUploadReadyMessage.$Properties): proto.v1.FileUploadReadyMessage;
+
+            /**
+             * Encodes the specified FileUploadReadyMessage message. Does not implicitly {@link proto.v1.FileUploadReadyMessage.verify|verify} messages.
+             * @param message FileUploadReadyMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encode(message: proto.v1.FileUploadReadyMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Encodes the specified FileUploadReadyMessage message, length delimited. Does not implicitly {@link proto.v1.FileUploadReadyMessage.verify|verify} messages.
+             * @param message FileUploadReadyMessage message or plain object to encode
+             * @param [writer] Writer to encode to
+             * @returns Writer
+             */
+            static encodeDelimited(message: proto.v1.FileUploadReadyMessage.$Properties, writer?: $protobuf.Writer): $protobuf.Writer;
+
+            /**
+             * Decodes a FileUploadReadyMessage message from the specified reader or buffer.
+             * @param reader Reader or buffer to decode from
+             * @param [length] Message length if known beforehand
+             * @returns {proto.v1.FileUploadReadyMessage & proto.v1.FileUploadReadyMessage.$Shape} FileUploadReadyMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decode(reader: ($protobuf.Reader|Uint8Array), length?: number): proto.v1.FileUploadReadyMessage & proto.v1.FileUploadReadyMessage.$Shape;
+
+            /**
+             * Decodes a FileUploadReadyMessage message from the specified reader or buffer, length delimited.
+             * @param reader Reader or buffer to decode from
+             * @returns {proto.v1.FileUploadReadyMessage & proto.v1.FileUploadReadyMessage.$Shape} FileUploadReadyMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            static decodeDelimited(reader: ($protobuf.Reader|Uint8Array)): proto.v1.FileUploadReadyMessage & proto.v1.FileUploadReadyMessage.$Shape;
+
+            /**
+             * Verifies a FileUploadReadyMessage message.
+             * @param message Plain object to verify
+             * @returns `null` if valid, otherwise the reason why it is not
+             */
+            static verify(message: { [k: string]: unknown }): (string|null);
+
+            /**
+             * Creates a FileUploadReadyMessage message from a plain object. Also converts values to their respective internal types.
+             * @param object Plain object
+             * @returns FileUploadReadyMessage
+             */
+            static fromObject(object: { [k: string]: unknown }): proto.v1.FileUploadReadyMessage;
+
+            /**
+             * Creates a plain object from a FileUploadReadyMessage message. Also converts values to other types if specified.
+             * @param message FileUploadReadyMessage
+             * @param [options] Conversion options
+             * @returns Plain object
+             */
+            static toObject(message: proto.v1.FileUploadReadyMessage, options?: $protobuf.IConversionOptions): { [k: string]: unknown };
+
+            /**
+             * Converts this FileUploadReadyMessage to JSON.
+             * @returns JSON object
+             */
+            toJSON(): { [k: string]: unknown };
+
+            /**
+             * Gets the type url for FileUploadReadyMessage
+             * @param [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns The type url
+             */
+            static getTypeUrl(prefix?: string): string;
+        }
+
+        namespace FileUploadReadyMessage {
+
+            /** Properties of a FileUploadReadyMessage. */
+            interface $Properties {
+
+                /** FileUploadReadyMessage sessionId */
+                sessionId?: (string|null);
+
+                /** Unknown fields preserved while decoding when enabled */
+                $unknowns?: Uint8Array[];
+            }
+
+            /** Shape of a FileUploadReadyMessage. */
+            type $Shape = proto.v1.FileUploadReadyMessage.$Properties;
         }
 
         /**
@@ -3850,6 +4536,21 @@ export namespace proto {
 
             /** FileDeleteRequest context. */
             context: string;
+
+            /** FileDeleteRequest baseSha256. */
+            baseSha256: string;
+
+            /** FileDeleteRequest baseHashMissing. */
+            baseHashMissing: boolean;
+
+            /** FileDeleteRequest operationId. */
+            operationId: string;
+
+            /** FileDeleteRequest baseVersion. */
+            baseVersion: string;
+
+            /** FileDeleteRequest versionGuard. */
+            versionGuard: boolean;
 
             /**
              * Creates a new FileDeleteRequest instance using the specified properties.
@@ -3947,6 +4648,21 @@ export namespace proto {
                 /** FileDeleteRequest context */
                 context?: (string|null);
 
+                /** FileDeleteRequest baseSha256 */
+                baseSha256?: (string|null);
+
+                /** FileDeleteRequest baseHashMissing */
+                baseHashMissing?: (boolean|null);
+
+                /** FileDeleteRequest operationId */
+                operationId?: (string|null);
+
+                /** FileDeleteRequest baseVersion */
+                baseVersion?: (string|null);
+
+                /** FileDeleteRequest versionGuard */
+                versionGuard?: (boolean|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -3990,6 +4706,21 @@ export namespace proto {
 
             /** FileRenameRequest context. */
             context: string;
+
+            /** FileRenameRequest baseSha256. */
+            baseSha256: string;
+
+            /** FileRenameRequest baseHashMissing. */
+            baseHashMissing: boolean;
+
+            /** FileRenameRequest operationId. */
+            operationId: string;
+
+            /** FileRenameRequest baseVersion. */
+            baseVersion: string;
+
+            /** FileRenameRequest versionGuard. */
+            versionGuard: boolean;
 
             /**
              * Creates a new FileRenameRequest instance using the specified properties.
@@ -4092,6 +4823,21 @@ export namespace proto {
 
                 /** FileRenameRequest context */
                 context?: (string|null);
+
+                /** FileRenameRequest baseSha256 */
+                baseSha256?: (string|null);
+
+                /** FileRenameRequest baseHashMissing */
+                baseHashMissing?: (boolean|null);
+
+                /** FileRenameRequest operationId */
+                operationId?: (string|null);
+
+                /** FileRenameRequest baseVersion */
+                baseVersion?: (string|null);
+
+                /** FileRenameRequest versionGuard */
+                versionGuard?: (boolean|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -4426,6 +5172,9 @@ export namespace proto {
             /** FileSyncModifyMessage lastTime. */
             lastTime: (number|Long);
 
+            /** FileSyncModifyMessage fileVersion. */
+            fileVersion: string;
+
             /**
              * Creates a new FileSyncModifyMessage instance using the specified properties.
              * @param [properties] Properties to set
@@ -4531,6 +5280,9 @@ export namespace proto {
                 /** FileSyncModifyMessage lastTime */
                 lastTime?: (number|Long|null);
 
+                /** FileSyncModifyMessage fileVersion */
+                fileVersion?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -4574,6 +5326,9 @@ export namespace proto {
 
             /** FileSyncDeleteMessage lastTime. */
             lastTime: (number|Long);
+
+            /** FileSyncDeleteMessage previousVersion. */
+            previousVersion: string;
 
             /**
              * Creates a new FileSyncDeleteMessage instance using the specified properties.
@@ -4677,6 +5432,9 @@ export namespace proto {
                 /** FileSyncDeleteMessage lastTime */
                 lastTime?: (number|Long|null);
 
+                /** FileSyncDeleteMessage previousVersion */
+                previousVersion?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -4729,6 +5487,12 @@ export namespace proto {
 
             /** FileSyncRenameMessage oldPathHash. */
             oldPathHash: string;
+
+            /** FileSyncRenameMessage fileVersion. */
+            fileVersion: string;
+
+            /** FileSyncRenameMessage previousVersion. */
+            previousVersion: string;
 
             /**
              * Creates a new FileSyncRenameMessage instance using the specified properties.
@@ -4840,6 +5604,12 @@ export namespace proto {
 
                 /** FileSyncRenameMessage oldPathHash */
                 oldPathHash?: (string|null);
+
+                /** FileSyncRenameMessage fileVersion */
+                fileVersion?: (string|null);
+
+                /** FileSyncRenameMessage previousVersion */
+                previousVersion?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
@@ -5153,6 +5923,27 @@ export namespace proto {
             /** FileSyncUploadMessage chunkSize. */
             chunkSize: (number|Long);
 
+            /** FileSyncUploadMessage expectedContentHash. */
+            expectedContentHash: string;
+
+            /** FileSyncUploadMessage expectedSize. */
+            expectedSize: (number|Long);
+
+            /** FileSyncUploadMessage expectedMtime. */
+            expectedMtime: (number|Long);
+
+            /** FileSyncUploadMessage expectedCtime. */
+            expectedCtime: (number|Long);
+
+            /** FileSyncUploadMessage requiresPrepare. */
+            requiresPrepare: boolean;
+
+            /** FileSyncUploadMessage expectedSha256. */
+            expectedSha256: string;
+
+            /** FileSyncUploadMessage baseVersion. */
+            baseVersion: string;
+
             /**
              * Creates a new FileSyncUploadMessage instance using the specified properties.
              * @param [properties] Properties to set
@@ -5249,6 +6040,27 @@ export namespace proto {
                 /** FileSyncUploadMessage chunkSize */
                 chunkSize?: (number|Long|null);
 
+                /** FileSyncUploadMessage expectedContentHash */
+                expectedContentHash?: (string|null);
+
+                /** FileSyncUploadMessage expectedSize */
+                expectedSize?: (number|Long|null);
+
+                /** FileSyncUploadMessage expectedMtime */
+                expectedMtime?: (number|Long|null);
+
+                /** FileSyncUploadMessage expectedCtime */
+                expectedCtime?: (number|Long|null);
+
+                /** FileSyncUploadMessage requiresPrepare */
+                requiresPrepare?: (boolean|null);
+
+                /** FileSyncUploadMessage expectedSha256 */
+                expectedSha256?: (string|null);
+
+                /** FileSyncUploadMessage baseVersion */
+                baseVersion?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -5298,6 +6110,9 @@ export namespace proto {
 
             /** FileSyncDownloadMessage size. */
             size: (number|Long);
+
+            /** FileSyncDownloadMessage fileVersion. */
+            fileVersion: string;
 
             /**
              * Creates a new FileSyncDownloadMessage instance using the specified properties.
@@ -5407,6 +6222,9 @@ export namespace proto {
                 /** FileSyncDownloadMessage size */
                 size?: (number|Long|null);
 
+                /** FileSyncDownloadMessage fileVersion */
+                fileVersion?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -5441,6 +6259,12 @@ export namespace proto {
 
             /** FileRenameAckMessage pathHash. */
             pathHash: string;
+
+            /** FileRenameAckMessage operationId. */
+            operationId: string;
+
+            /** FileRenameAckMessage fileVersion. */
+            fileVersion: string;
 
             /**
              * Creates a new FileRenameAckMessage instance using the specified properties.
@@ -5535,6 +6359,12 @@ export namespace proto {
                 /** FileRenameAckMessage pathHash */
                 pathHash?: (string|null);
 
+                /** FileRenameAckMessage operationId */
+                operationId?: (string|null);
+
+                /** FileRenameAckMessage fileVersion */
+                fileVersion?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -5569,6 +6399,15 @@ export namespace proto {
 
             /** FileUploadAckMessage pathHash. */
             pathHash: string;
+
+            /** FileUploadAckMessage sessionId. */
+            sessionId: string;
+
+            /** FileUploadAckMessage contentHash. */
+            contentHash: string;
+
+            /** FileUploadAckMessage fileVersion. */
+            fileVersion: string;
 
             /**
              * Creates a new FileUploadAckMessage instance using the specified properties.
@@ -5663,6 +6502,15 @@ export namespace proto {
                 /** FileUploadAckMessage pathHash */
                 pathHash?: (string|null);
 
+                /** FileUploadAckMessage sessionId */
+                sessionId?: (string|null);
+
+                /** FileUploadAckMessage contentHash */
+                contentHash?: (string|null);
+
+                /** FileUploadAckMessage fileVersion */
+                fileVersion?: (string|null);
+
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];
             }
@@ -5697,6 +6545,9 @@ export namespace proto {
 
             /** FileDeleteAckMessage pathHash. */
             pathHash: string;
+
+            /** FileDeleteAckMessage operationId. */
+            operationId: string;
 
             /**
              * Creates a new FileDeleteAckMessage instance using the specified properties.
@@ -5790,6 +6641,9 @@ export namespace proto {
 
                 /** FileDeleteAckMessage pathHash */
                 pathHash?: (string|null);
+
+                /** FileDeleteAckMessage operationId */
+                operationId?: (string|null);
 
                 /** Unknown fields preserved while decoding when enabled */
                 $unknowns?: Uint8Array[];

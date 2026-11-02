@@ -41,6 +41,7 @@ For users in Mainland China, it is recommended to use the Tencent `cnb.cool` mir
     - Automatically monitors and syncs the creation, update, and deletion of all notes inside the Vault (repository).
 - 🖼️ **Full Attachment Support**:
     - Syncs images, videos, audio, and all other non-configuration files in real-time.
+    - Concurrent attachment edits retain conflict versions. See [attachment conflict handling](docs/attachment-conflicts.md) for upgrade order and limitations (Chinese).
     > ⚠️ **Note**: Requires v1.0+, Server v0.9+. Please manage attachment file sizes; large files may cause synchronization delays.
 - ⚙️ **Configuration Sync**:
     - Provides configuration sync, supporting config synchronization across multiple devices. Say goodbye to the pain of manually copying configuration files to multiple devices.

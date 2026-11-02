@@ -28,6 +28,11 @@ export class SyncState {
   // ─── Chunk size settings from server ─────────────────────────────────────────
   /** 上传分片数量 / Upload chunk size from server */
   syncUpChunkNum = 100;
+  protectedFilesSupported = false;
+  attachmentConflictSupported = false;
+  attachmentRePushSafeSupported = false;
+  attachmentMutationCASSupported = false;
+  attachmentVersionCASSupported = false;
   /** 下载分片数量 / Download chunk size from server */
   syncDownChunkNum = 50;
   /** 上行流水线窗口（协商值），0 = stop-and-wait（默认关闭，等 auth 协商块覆盖） / Upload pipeline window (negotiated), 0 = stop-and-wait */
@@ -95,6 +100,7 @@ export class SyncState {
    * silently reset the offline duration, defeating the guard on the very next round.
    */
   offlineGuardSkippedThisRound = false;
+  attachmentVersionSkippedThisRound = false;
 
   // ─── Per-type sync task statistics ───────────────────────────────────────────
   onCompletedChange?: (type: "note" | "file" | "setting" | "folder") => void;
@@ -152,7 +158,7 @@ export class SyncState {
    * 待确认的文件重命名队列，等待服务端 FileRenameAck 后再更新 hashManager
    * Pending file rename queue, wait for server FileRenameAck before updating hashManager
    */
-  pendingFileRenames: { oldPath: string; newPath: string; contentHash: string }[] = [];
+  pendingFileRenames: { oldPath: string; newPath: string; contentHash: string; baseSha256?: string; operationId: string; slotKey: string; vault: string }[] = [];
   /**
    * 待确认的笔记重命名映射，key 为 newPath，等待服务端 NoteRenameAck（按 path 精确匹配）后再更新 hashManager；
    * 老服务端不下发 path 时回退 FIFO（按 Map 插入顺序取首个）
@@ -174,6 +180,7 @@ export class SyncState {
   pendingNoteDeleteAcks = new Set<string>();
   /** 待服务端 FileDeleteAck 确认的路径集合 / Paths pending FileDeleteAck */
   pendingFileDeleteAcks = new Set<string>();
+  pendingFileDeleteOperations = new Map<string, { path: string; vault: string; slotKey: string }>();
   /** 待服务端 SettingDeleteAck 确认的路径集合 / Paths pending SettingDeleteAck */
   pendingConfigDeleteAcks = new Set<string>();
   /**
@@ -240,6 +247,7 @@ export class SyncState {
     this.configSyncEnd = false;
     this.folderSyncEnd = false;
     this.offlineGuardSkippedThisRound = false;
+    this.attachmentVersionSkippedThisRound = false;
     this.scannedNoteHashes.clear();
     this.scannedFileHashes.clear();
     this.scannedConfigHashes.clear();

@@ -11,6 +11,10 @@ import { $ } from "../../i18n/lang";
 import FastSync from "../../main";
 import { StatusBarManager } from './status_bar_manager';
 import { SyncLogManager } from '../sync/sync_log_manager';
+import { getAttachmentConflict } from '../sync/attachment_baseline';
+import { acceptAttachmentMutationRemote, fileModify, retryPendingAttachmentConflict } from '../sync/operator_file';
+import { ConfirmModal } from '../../views/confirm-modal';
+import { RetryAttachmentMutationModal } from '../../views/retry-attachment-mutation-modal';
 
 
 
@@ -177,6 +181,46 @@ export class MenuManager {
       id: "rebuild-file-hash-map",
       name: $("ui.menu.rebuild_hash"),
       callback: () => rebuildAllHashes(this.plugin),
+    });
+
+    this.plugin.addCommand({
+      id: "resolve-current-attachment-conflict-keep-local",
+      name: "解决当前附件冲突：保留本地版本",
+      callback: () => {
+        const file = this.plugin.app.workspace.getActiveFile();
+        if (!file || file.extension === "md") {
+          showSyncNotice("请先打开需要处理的附件。", 6000);
+          return;
+        }
+        const conflict = getAttachmentConflict(this.plugin, file.path);
+        if (conflict?.mutation) {
+          new ConfirmModal(this.plugin.app, "保留远端附件", `将核对 ${file.path} 是否与已取得的远端版本一致。一致后放弃这次旧的删除或重命名意图；不会向服务端写入文件。`, () => {
+            void acceptAttachmentMutationRemote(file, this.plugin)
+              .then(() => showSyncNotice("已保留远端附件并解除旧操作冲突。", 6000))
+              .catch(error => showSyncNotice(`附件冲突处理失败：${error instanceof Error ? error.message : String(error)}`, 6000));
+          }, "确认保留", "取消").open();
+          return;
+        }
+        if (conflict?.pending) {
+          void retryPendingAttachmentConflict(file.path, this.plugin)
+            .then(() => showSyncNotice("已请求重新验证远端附件。", 6000))
+            .catch(error => showSyncNotice(`附件冲突重试失败：${error instanceof Error ? error.message : String(error)}`, 6000));
+          return;
+        }
+        if (!conflict?.remoteSha256) {
+          showSyncNotice("没有可验证的附件冲突记录，请先同步并检查冲突日志。", 6000);
+          return;
+        }
+        new ConfirmModal(this.plugin.app, "保留本地附件", `将尝试把 ${file.path} 的本地版本提交到同步服务。若远端版本已再次变化，服务会保留冲突并拒绝覆盖。`, () => {
+          void fileModify(file, this.plugin, false, conflict.remoteSha256).catch(error => showSyncNotice(`附件冲突处理失败：${error instanceof Error ? error.message : String(error)}`, 6000));
+        }, "提交本地版本", "继续保留冲突").open();
+      },
+    });
+
+    this.plugin.addCommand({
+      id: 'retry-attachment-mutation-conflict',
+      name: '重试获取冲突附件的远端版本',
+      callback: () => new RetryAttachmentMutationModal(this.plugin.app, this.plugin).open(),
     });
 
     // 注册命令

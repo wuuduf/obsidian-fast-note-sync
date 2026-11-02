@@ -459,28 +459,17 @@ function computeMidSliceStart(size: number): number {
  */
 export const hashArrayBuffer = async function (buffer: ArrayBuffer): Promise<string> {
   const size = buffer.byteLength
-  let view: Uint8Array | null
+  const view = new Uint8Array(buffer)
+  if (size <= FILE_HASH_THRESHOLD) return await computeRollingHash(view)
 
-  if (size <= FILE_HASH_THRESHOLD) {
-    view = new Uint8Array(buffer)
-  } else {
-    // 大文件优化：拼接前 5MB、中间 5MB 和后 5MB (Optimize for large files: slice first, middle, and last 5MB)
-    view = new Uint8Array(FILE_HASH_SLICE_SIZE * 3)
-    const fullView = new Uint8Array(buffer)
-
-    // 添加边界保护：确保 subarray 不会超出 view 的预留空间 (Boundary protection: ensure subarray fits in view)
-    const headLen = Math.min(size, FILE_HASH_SLICE_SIZE)
-    const tailLen = Math.min(size, FILE_HASH_SLICE_SIZE)
-    const tailStart = Math.max(0, size - tailLen)
-    const midStart = computeMidSliceStart(size)
-    const midLen = Math.min(FILE_HASH_SLICE_SIZE, size - midStart)
-
-    view.set(fullView.subarray(0, headLen), 0)
-    view.set(fullView.subarray(midStart, midStart + midLen), FILE_HASH_SLICE_SIZE)
-    view.set(fullView.subarray(tailStart, size), FILE_HASH_SLICE_SIZE * 2)
-  }
-
-  return await computeRollingHash(view)
+  // The legacy hash samples three 5 MiB regions. These views preserve its
+  // exact byte order without allocating another 15 MiB beside the snapshot.
+  const midStart = computeMidSliceStart(size)
+  return await computeRollingHashSegments([
+    view.subarray(0, FILE_HASH_SLICE_SIZE),
+    view.subarray(midStart, midStart + FILE_HASH_SLICE_SIZE),
+    view.subarray(size - FILE_HASH_SLICE_SIZE),
+  ])
 }
 
 /**
@@ -500,16 +489,33 @@ async function readRange(app: App, path: string, offset: number, length: number)
       signal: controller.signal
     })
 
-    if (response.status === 206 || response.status === 200) {
-      let buffer = await response.arrayBuffer()
-      // 如果服务器不支持 206 返回了 200 (全量)，或返回数据量超过预期，则进行截取以保持一致性
-      // If server doesn't support 206 (returns 200) or returns more data than expected, slice to maintain consistency
-      if (buffer.byteLength > length) {
-        return buffer.slice(0, length)
-      }
-      return buffer
+    // A 200 response ignores Range. Do not buffer an unbounded whole response
+    // or accidentally hash its prefix as the middle/tail: the caller falls
+    // back to its local adapter's full-file read.
+    const contentRange = response.headers.get("content-range")?.match(/^bytes (\d+)-(\d+)\/(?:\d+|\*)$/i)
+    if (response.status !== 206 || !contentRange || Number(contentRange[1]) !== offset || Number(contentRange[2]) !== offset + length - 1 || !response.body) {
+      void response.body?.cancel().catch(() => {})
+      throw new Error(`Invalid file range response: ${response.status}`)
     }
-    throw new Error(`Failed to read file range via fetch: ${response.status}`)
+    const reader = response.body.getReader()
+    const result = new Uint8Array(length)
+    let received = 0
+    try {
+      for (;;) {
+        const { done, value } = await reader.read()
+        if (done) break
+        if (received + value.byteLength > length) {
+          void reader.cancel().catch(() => {})
+          throw new Error("File range response exceeds requested length")
+        }
+        result.set(value, received)
+        received += value.byteLength
+      }
+      if (received !== length) throw new Error("File range response is incomplete")
+      return result.buffer
+    } finally {
+      reader.releaseLock()
+    }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error(`Read file range timeout (5s) for: ${path}`)
@@ -544,30 +550,17 @@ export const hashFileAsync = async function (app: App, path: string): Promise<st
       const tailOffset = Math.max(0, size - FILE_HASH_SLICE_SIZE)
       const tail = await readRange(app, path, tailOffset, FILE_HASH_SLICE_SIZE)
 
-      view = new Uint8Array(FILE_HASH_SLICE_SIZE * 3)
-      const headUint8 = new Uint8Array(head)
-      const midUint8 = new Uint8Array(mid)
-      const tailUint8 = new Uint8Array(tail)
-
-      // 强制截断至标准切片大小，防止 Uint8Array.set 越界 (Force slice to standard size to prevent RangeError)
-      view.set(headUint8.subarray(0, Math.min(headUint8.length, FILE_HASH_SLICE_SIZE)), 0)
-      view.set(midUint8.subarray(0, Math.min(midUint8.length, FILE_HASH_SLICE_SIZE)), FILE_HASH_SLICE_SIZE)
-      view.set(tailUint8.subarray(0, Math.min(tailUint8.length, FILE_HASH_SLICE_SIZE)), FILE_HASH_SLICE_SIZE * 2)
+      const hash = await computeRollingHashSegments([new Uint8Array(head), new Uint8Array(mid), new Uint8Array(tail)])
+      dump(`[HashFile] [Calc] path=${path} size=${formatFileSize(size)} hash=${hash}`)
+      return hash
     } catch (e) {
       dump(`hashFileAsync: readRange failed or timeout, falling back to full read for ${path}: ${(e as Error).message}`);
       // 兜底方案：加载完整文件内容 (Fallback: read full file)
       const buffer = await app.vault.adapter.readBinary(path)
-      const fullView = new Uint8Array(buffer)
-      view = new Uint8Array(FILE_HASH_SLICE_SIZE * 3)
-
-      const headLen = Math.min(size, FILE_HASH_SLICE_SIZE)
-      const tailLen = Math.min(size, FILE_HASH_SLICE_SIZE)
-      const tailStart = Math.max(0, size - tailLen)
-      const midLen = Math.min(FILE_HASH_SLICE_SIZE, size - midOffset)
-
-      view.set(fullView.subarray(0, headLen), 0)
-      view.set(fullView.subarray(midOffset, midOffset + midLen), FILE_HASH_SLICE_SIZE)
-      view.set(fullView.subarray(tailStart, size), FILE_HASH_SLICE_SIZE * 2)
+      if (buffer.byteLength !== size) throw new Error(`File changed while hashing: ${path}`)
+      const hash = await hashArrayBuffer(buffer)
+      dump(`[HashFile] [Calc] path=${path} size=${formatFileSize(size)} hash=${hash}`)
+      return hash
     }
   }
 
@@ -581,22 +574,24 @@ export const hashFileAsync = async function (app: App, path: string): Promise<st
  */
 async function computeRollingHash(view: Uint8Array | null): Promise<string> {
   if (!view) return "0"
+  return await computeRollingHashSegments([view])
+}
+
+async function computeRollingHashSegments(segments: readonly Uint8Array[]): Promise<string> {
   let hash = 0
-  const len = view.length
+  let offset = 0
   const yieldSize = 512 * 1024 // 每 512KB 让出一次主线程 (Yield every 512KB)
 
-  for (let i = 0; i < len; i++) {
-    const byte = view[i]
-    hash = (hash << 5) - hash + byte
-    hash &= hash
-
-    if (i > 0 && i % yieldSize === 0) {
-      await new Promise((resolve) => window.setTimeout(resolve, 0))
+  for (const segment of segments) {
+    for (let i = 0; i < segment.length; i++, offset++) {
+      hash = (hash << 5) - hash + segment[i]
+      hash &= hash
+      if (offset > 0 && offset % yieldSize === 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      }
     }
   }
-  const result = String(hash)
-  view = null // 显式释放引用 (Explicitly release reference)
-  return result
+  return String(hash)
 }
 
 

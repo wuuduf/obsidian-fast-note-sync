@@ -13,10 +13,15 @@ export interface SnapFile {
     path: string;
     pathHash: string;
     contentHash: string;
+    snapshotSha256?: string;
+    resumeSessionId?: string;
     mtime: number;
     ctime: number;
     size: number;
     baseHash?: string | null;
+    baseSha256?: string;
+    baseVersion?: string;
+    versionGuard?: boolean;
 }
 
 export interface SnapFolder {
@@ -27,6 +32,10 @@ export interface SnapFolder {
 export interface PathHashFile {
     path: string;
     pathHash: string;
+    baseSha256?: string;
+    baseVersion?: string;
+    versionGuard?: boolean;
+    baseHashMissing?: boolean;
 }
 
 export interface ReceiveMessage {
@@ -56,6 +65,7 @@ export interface SyncMessage {
 }
 
 export interface ReceiveFileSyncUpdateMessage {
+    fileVersion?: string;
     /** Source sync context captured before asynchronous local work. */
     traceId?: string;
     context?: string;
@@ -72,6 +82,7 @@ export interface ReceiveFileSyncUpdateMessage {
 }
 
 export interface FileUploadMessage {
+    baseVersion?: string;
     /** Source sync context captured before asynchronous local work. */
     traceId?: string;
     context?: string;
@@ -81,11 +92,18 @@ export interface FileUploadMessage {
     mtime: number;
     sessionId: string;
     chunkSize: number;
+    expectedContentHash?: string;
+    expectedSha256?: string;
+    expectedSize?: number;
+    expectedMtime?: number;
+    expectedCtime?: number;
+    requiresPrepare?: boolean;
     /** 所属下载页（0-based），见 ReceiveMessage.pageIndex 注释 / owning download page, see ReceiveMessage.pageIndex */
     pageIndex?: number;
 }
 
 export interface FileSyncChunkDownloadMessage {
+    fileVersion?: string;
     /** Source sync context captured before asynchronous local work. */
     traceId?: string;
     context?: string;
@@ -100,13 +118,14 @@ export interface FileSyncChunkDownloadMessage {
 }
 
 export interface FileDownloadSession {
+    fileVersion?: string;
     /** Vault captured before local asynchronous work begins. */
     vault?: string;
     /** Source sync context captured before asynchronous local work. */
     traceId?: string;
     context?: string;
     /** Deferred rename pages that depend on this re-pushed file reaching disk. */
-    completionOwners?: Array<{ pageIndex?: number; context: string }>;
+    completionOwners?: Array<{ pageIndex?: number; context: string; untracked?: boolean; failureRecorded?: boolean }>;
     completionState?: { reported: boolean };
     path: string;
     contentHash?: string;
@@ -137,6 +156,7 @@ export interface ReceiveMtimeMessage {
 }
 
 export interface ReceivePathMessage {
+    previousVersion?: string;
     /** Source sync context captured before asynchronous local work. */
     traceId?: string;
     context?: string;
@@ -171,6 +191,7 @@ export interface FileSyncData {
     files: SnapFile[];
     delFiles: PathHashFile[];
     missingFiles: PathHashFile[];
+    protectedFiles?: PathHashFile[];
     traceId?: string;
     context?: string;
 }

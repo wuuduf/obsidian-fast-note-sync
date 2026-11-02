@@ -54,6 +54,10 @@ function enSendDataPayload(action: WSAction.WSSendAction, payload: unknown): Uin
             const msg = proto.v1.FileUploadCheckRequest.create(properties);
             return proto.v1.FileUploadCheckRequest.encode(msg).finish();
         }
+        case "FileUploadPrepare": {
+            const msg = proto.v1.FileUploadPrepareRequest.create(properties);
+            return proto.v1.FileUploadPrepareRequest.encode(msg).finish();
+        }
         case WSAction.FileReceiveDelete: {
             const msg = proto.v1.FileDeleteRequest.create(properties);
             return proto.v1.FileDeleteRequest.encode(msg).finish();
@@ -312,7 +316,14 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
                     path: pbObj.path,
                     pathHash: pbObj.pathHash,
                     sessionId: pbObj.sessionId,
-                    chunkSize: pbObj.chunkSize
+                    chunkSize: pbObj.chunkSize,
+                    expectedContentHash: pbObj.expectedContentHash,
+                    expectedSize: pbObj.expectedSize,
+                    expectedMtime: pbObj.expectedMtime,
+                    expectedCtime: pbObj.expectedCtime,
+                    expectedSha256: pbObj.expectedSha256,
+                    baseVersion: pbObj.baseVersion,
+                    requiresPrepare: pbObj.requiresPrepare
                 };
             } catch {
                 return tryJsonDecode();
@@ -332,7 +343,8 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
                     sessionId: pbObj.sessionId,
                     chunkSize: pbObj.chunkSize,
                     totalChunks: pbObj.totalChunks,
-                    size: pbObj.size
+                    size: pbObj.size,
+                    fileVersion: pbObj.fileVersion
                 };
             } catch {
                 return tryJsonDecode();
@@ -352,6 +364,36 @@ function deReceiveProtobufToDTO(action: WSAction.WSReceiveAction, data: Uint8Arr
             try {
                 return proto.v1.FileUploadAckMessage.toObject(
                     proto.v1.FileUploadAckMessage.decode(data),
+                    { defaults: true, longs: Number }
+                );
+            } catch {
+                return tryJsonDecode();
+            }
+        }
+        case "FileUploadReady": {
+            try {
+                return proto.v1.FileUploadReadyMessage.toObject(
+                    proto.v1.FileUploadReadyMessage.decode(data),
+                    { defaults: true, longs: Number }
+                );
+            } catch {
+                return tryJsonDecode();
+            }
+        }
+        case "FileConflict": {
+            try {
+                return proto.v1.FileConflictMessage.toObject(
+                    proto.v1.FileConflictMessage.decode(data),
+                    { defaults: true, longs: Number }
+                );
+            } catch {
+                return tryJsonDecode();
+            }
+        }
+        case "FileBaseline": {
+            try {
+                return proto.v1.FileBaselineMessage.toObject(
+                    proto.v1.FileBaselineMessage.decode(data),
                     { defaults: true, longs: Number }
                 );
             } catch {

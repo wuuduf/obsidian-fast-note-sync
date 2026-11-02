@@ -23,6 +23,7 @@ interface Attempt {
 export class SyncRetryController {
   private attempts = new Map<string, Attempt>();
   private restarting = false;
+  private acceptedCallbacks = new Map<() => void, (() => void) | undefined>();
   constructor(private readonly host: RetryHost, private readonly replyTimeout = 30_000, private readonly applyTimeout = 300_000) {}
 
   retry(id: string): boolean {
@@ -68,10 +69,23 @@ export class SyncRetryController {
         this.finish(attempt, 'restart-required', '同步会话已变化，请重新同步。');
       }
     }
+    this.flushAcceptedCallbacks();
   }
 
   acceptsContext(): boolean {
     return ![...this.attempts.values()].some((attempt) => attempt.mode === 'restart' && !attempt.received);
+  }
+
+  whenContextAccepted(callback: () => void, onDiscard?: () => void): void {
+    if (this.acceptsContext()) callback();
+    else this.acceptedCallbacks.set(callback, onDiscard);
+  }
+
+  private flushAcceptedCallbacks(): void {
+    if (!this.acceptsContext()) return;
+    const callbacks = [...this.acceptedCallbacks.keys()];
+    this.acceptedCallbacks.clear();
+    for (const callback of callbacks) callback();
   }
 
   pageReceived(type: RetryType, context: string, page: number): void {
@@ -118,12 +132,19 @@ export class SyncRetryController {
 
   interrupt(message: string): void {
     if (this.restarting) return;
+    this.discardAcceptedCallbacks();
     for (const attempt of [...this.attempts.values()]) this.finish(attempt, 'restart-required', message);
   }
 
   clear(): void {
+    this.discardAcceptedCallbacks();
     for (const attempt of this.attempts.values()) if (attempt.timer) window.clearTimeout(attempt.timer);
     this.attempts.clear();
+  }
+  private discardAcceptedCallbacks(): void {
+    const callbacks = [...this.acceptedCallbacks.values()];
+    this.acceptedCallbacks.clear();
+    for (const callback of callbacks) callback?.();
   }
   private matches(a: Attempt, type: RetryType, context: string, page: number) {
     return a.mode === 'page' && a.type === type && a.context === context && a.page === page && a.vault === this.host.vault();
@@ -139,5 +160,6 @@ export class SyncRetryController {
     if (attempt.timer) window.clearTimeout(attempt.timer);
     this.attempts.delete(attempt.key);
     this.host.update(attempt.id, { retryState: state, retryMessage: message, status: state === 'recovered' ? 'success' : 'error', retryable: state !== 'recovered' });
+    this.flushAcceptedCallbacks();
   }
 }

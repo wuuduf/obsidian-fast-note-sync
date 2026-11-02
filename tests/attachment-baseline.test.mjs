@@ -1,0 +1,101 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import vm from "node:vm";
+import ts from "typescript";
+import { test } from "node:test";
+const source = ts.transpileModule(fs.readFileSync(new URL("../src/lib/sync/attachment_baseline.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
+const module = { exports: {} };
+vm.runInNewContext(source, { module, exports: module.exports, encodeURIComponent });
+const { getAttachmentBaseSha, getAttachmentBaseVersion, setAttachmentBaseSha, getAttachmentConflict, setAttachmentConflict, setAttachmentMutationConflict, clearAttachmentMutationConflict, setAttachmentDeletedConflict, setAttachmentPendingConflict, clearAttachmentPendingConflict, shouldDeferAttachmentConflict, setAttachmentResolution, finishAttachmentResolution } = module.exports;
+test("only explicitly confirmed baseline SHA is returned, scoped by vault and rolling base", () => {
+  const data = new Map();
+  const plugin = { settings: { vault: "A" }, app: { loadLocalStorage: key => data.get(key), saveLocalStorage: (key, value) => data.set(key, value) } };
+  assert.equal(getAttachmentBaseSha(plugin, "p.png", "123"), undefined);
+  setAttachmentBaseSha(plugin, "p.png", "123", "a".repeat(64));
+  assert.equal(getAttachmentBaseSha(plugin, "p.png", "123"), "a".repeat(64));
+  assert.equal(getAttachmentBaseVersion(plugin, "p.png", "123"), undefined, 'legacy SHA is not a version');
+  setAttachmentBaseSha(plugin, "p.png", "123", "a".repeat(64), 'A', 'version-1');
+  assert.equal(getAttachmentBaseVersion(plugin, "p.png", "123"), 'version-1');
+  assert.equal(getAttachmentBaseVersion(plugin, "p.png", "456"), undefined);
+  assert.equal(getAttachmentBaseSha(plugin, "p.png", "456"), undefined);
+  plugin.settings.vault = "B";
+  assert.equal(getAttachmentBaseSha(plugin, "p.png", "123"), undefined);
+});
+test("explicit resolution only clears the matching conflict after the confirmed snapshot ACK", () => {
+  const data = new Map();
+  const plugin = { settings: { vault: "A" }, app: { loadLocalStorage: key => data.get(key), saveLocalStorage: (key, value) => data.set(key, value) } };
+  setAttachmentConflict(plugin, "a.png", "a".repeat(64), "copy.png", 'A', undefined, 'v1');
+  setAttachmentResolution(plugin, "a.png", "a".repeat(64), "b".repeat(64), 'A', 'v1');
+  finishAttachmentResolution(plugin, "a.png", "c".repeat(64));
+  assert.ok(getAttachmentConflict(plugin, "a.png"));
+  setAttachmentConflict(plugin, "a.png", "d".repeat(64), undefined, 'A', undefined, 'v2');
+  finishAttachmentResolution(plugin, "a.png", "b".repeat(64));
+  assert.ok(getAttachmentConflict(plugin, "a.png"), "newer conflict cannot be cleared by an older ACK");
+  setAttachmentResolution(plugin, "a.png", "d".repeat(64), "b".repeat(64), 'A', 'v2');
+  finishAttachmentResolution(plugin, "a.png", "b".repeat(64));
+  assert.equal(getAttachmentConflict(plugin, "a.png"), undefined);
+});
+
+test("a repeated scan defers the same conflicted bytes, while newer edits are not discarded", () => {
+  const data = new Map();
+  const plugin = { settings: { vault: "A" }, app: { loadLocalStorage: key => data.get(key), saveLocalStorage: (key, value) => data.set(key, value) } };
+  setAttachmentConflict(plugin, "a.png", "a".repeat(64), undefined, "A", "b".repeat(64));
+  assert.equal(shouldDeferAttachmentConflict(plugin, "a.png", "b".repeat(64)), true);
+  assert.equal(shouldDeferAttachmentConflict(plugin, "a.png", "c".repeat(64)), false);
+  setAttachmentConflict(plugin, "a.png", "a".repeat(64), "copy.png");
+  assert.equal(shouldDeferAttachmentConflict(plugin, "a.png", "b".repeat(64)), true);
+  plugin.settings.vault = "B";
+  assert.equal(shouldDeferAttachmentConflict(plugin, "a.png", "b".repeat(64)), false);
+  setAttachmentDeletedConflict(plugin, "a.png");
+  assert.equal(shouldDeferAttachmentConflict(plugin, "a.png", "c".repeat(64)), true);
+});
+test("conflict records persist per vault and retain the existing copy for the same remote SHA", () => {
+  const data = new Map();
+  const plugin = { settings: { vault: "A" }, app: { loadLocalStorage: key => data.get(key), saveLocalStorage: (key, value) => data.set(key, value) } };
+  setAttachmentConflict(plugin, "a.png", "a".repeat(64), "a.conflict.png");
+  setAttachmentConflict(plugin, "a.png", "a".repeat(64));
+  assert.equal(getAttachmentConflict(plugin, "a.png").copyPath, "a.conflict.png");
+  plugin.settings.vault = "B";
+  assert.equal(getAttachmentConflict(plugin, "a.png"), undefined);
+  plugin.settings.vault = "A";
+  setAttachmentConflict(plugin, "a.png", "b".repeat(64));
+  assert.equal(getAttachmentConflict(plugin, "a.png").copyPath, undefined);
+});
+test("a pending rename target remains protected until verified and cannot clear a newer conflict", () => {
+  const data = new Map();
+  const plugin = { settings: { vault: "A" }, app: { loadLocalStorage: key => data.get(key), saveLocalStorage: (key, value) => data.set(key, value) } };
+  setAttachmentPendingConflict(plugin, "a.png");
+  assert.equal(getAttachmentConflict(plugin, "a.png").pending, true);
+  assert.equal(shouldDeferAttachmentConflict(plugin, "a.png", "a".repeat(64)), true);
+  clearAttachmentPendingConflict(plugin, "a.png");
+  assert.equal(getAttachmentConflict(plugin, "a.png"), undefined);
+  setAttachmentPendingConflict(plugin, "a.png");
+  setAttachmentConflict(plugin, "a.png", "b".repeat(64), "copy.png");
+  clearAttachmentPendingConflict(plugin, "a.png");
+  assert.equal(getAttachmentConflict(plugin, "a.png").remoteSha256, "b".repeat(64));
+});
+test("mutation conflicts survive remote version preservation and protect every later snapshot", () => {
+  const data = new Map();
+  const plugin = { settings: { vault: "A" }, app: { loadLocalStorage: key => data.get(key), saveLocalStorage: (key, value) => data.set(key, value) } };
+  setAttachmentMutationConflict(plugin, "old.bin", 'rename', 'a'.repeat(64), 'new.bin');
+  assert.equal(shouldDeferAttachmentConflict(plugin, "old.bin", 'b'.repeat(64)), true);
+  setAttachmentConflict(plugin, "old.bin", 'c'.repeat(64), 'remote-copy.bin');
+  assert.equal(getAttachmentConflict(plugin, "old.bin").mutation, 'rename');
+  assert.equal(getAttachmentConflict(plugin, "old.bin").targetPath, 'new.bin');
+  clearAttachmentPendingConflict(plugin, "old.bin");
+  assert.equal(getAttachmentConflict(plugin, "old.bin").mutation, 'rename');
+  clearAttachmentMutationConflict(plugin, "old.bin");
+  assert.equal(getAttachmentConflict(plugin, "old.bin"), undefined);
+});
+
+test("same-content newer version cannot be cleared by an older resolution ACK", () => {
+  const data = new Map();
+  const plugin = { settings: { vault: 'A' }, app: { loadLocalStorage: key => data.get(key), saveLocalStorage: (key, value) => data.set(key, value) } };
+  const sha = 'a'.repeat(64), snapshot = 'b'.repeat(64);
+  setAttachmentConflict(plugin, 'a.png', sha, 'old-copy', 'A', snapshot, 'version-1');
+  setAttachmentResolution(plugin, 'a.png', sha, snapshot, 'A', 'version-1');
+  setAttachmentConflict(plugin, 'a.png', sha, undefined, 'A', snapshot, 'version-2');
+  finishAttachmentResolution(plugin, 'a.png', snapshot);
+  assert.equal(getAttachmentConflict(plugin, 'a.png').remoteVersion, 'version-2');
+  assert.equal(getAttachmentConflict(plugin, 'a.png').copyPath, undefined);
+});

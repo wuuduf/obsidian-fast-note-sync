@@ -372,13 +372,14 @@ export class WebSocketClient {
     void this.register();
   }
 
-  private async waitForBufferDrain(socket: WebSocket, maxBufferSize = 5 * 1024 * 1024): Promise<boolean> {
-    if (!socket) return false;
+  private async waitForBufferDrain(socket: WebSocket, before?: () => boolean, maxBufferSize = 5 * 1024 * 1024): Promise<'ready' | 'cancelled' | 'closed'> {
+    if (!socket) return 'closed';
     while (this.ws === socket && socket.readyState === WebSocket.OPEN) {
-      if (socket.bufferedAmount <= maxBufferSize) return true;
+      if (socket.bufferedAmount <= maxBufferSize) return 'ready';
       await new Promise(resolve => window.setTimeout(resolve, 50));
+      if (before?.()) return 'cancelled';
     }
-    return false;
+    return 'closed';
   }
 
   public async SendMessage(action: string, data: unknown, before?: () => boolean, after?: () => void) {
@@ -387,7 +388,10 @@ export class WebSocketClient {
     }
 
     const socket = this.ws;
-    if (!await this.waitForBufferDrain(socket) || this.ws !== socket || socket.readyState !== WebSocket.OPEN) return;
+    const drained = await this.waitForBufferDrain(socket, before);
+    if (drained === 'cancelled') return true;
+    if (drained !== 'ready' || this.ws !== socket || socket.readyState !== WebSocket.OPEN) return;
+    if (before?.()) return true;
 
     this.Send(action, data, () => {
       after?.();
@@ -457,13 +461,15 @@ export class WebSocketClient {
     }
 
     const socket = this.ws;
-    const drained = await this.waitForBufferDrain(socket);
+    const drained = await this.waitForBufferDrain(socket, before);
 
     // 等待缓冲区排空期间连接可能已断开，发送前再次确认，避免对已关闭的 socket 调用 send()
     // Connection may have dropped while waiting for the buffer to drain; re-check before sending
-    if (!drained || this.ws !== socket || socket.readyState !== WebSocket.OPEN) {
+    if (drained === 'cancelled') return 'cancelled';
+    if (drained !== 'ready' || this.ws !== socket || socket.readyState !== WebSocket.OPEN) {
       return 'closed';
     }
+    if (before?.()) return 'cancelled';
 
     const prefixBytes = new TextEncoder().encode(prefix);
     let dataToSend: Uint8Array;

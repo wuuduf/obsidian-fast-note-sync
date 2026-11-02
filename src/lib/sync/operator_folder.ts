@@ -2,7 +2,7 @@ import { sourceTraceId } from "../utils/diagnostics";
 import { TFolder, normalizePath } from "obsidian";
 
 import { SyncEndData, FolderSyncRenameMessage } from "../utils/types";
-import { hashContent, dump, dumpError, isFolderSyncPathExcluded, waitForFolderEmpty, vaultDelete, checkAndNotifyCaseConflict } from "../utils/helpers";
+import { hashContent, dump, dumpError, isFolderSyncPathExcluded, waitForFolderEmpty, vaultDelete, checkAndNotifyCaseConflict, showSyncNotice } from "../utils/helpers";
 import { SyncLogManager } from "./sync_log_manager";
 import type FastSync from "../../main";
 
@@ -272,6 +272,8 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
     const traceId = sourceTraceId(plugin, sourceContext, data.traceId);
     const sourceVault = plugin.settings.vault;
     if (plugin.settings.syncEnabled == false) return
+    const ownsSource = () => plugin.settings.vault === sourceVault && sourceContext === (plugin.syncState.activeSyncContext ?? "");
+    if (!ownsSource()) return;
     if (isFolderSyncPathExcluded(data.path, plugin) || isFolderSyncPathExcluded(data.oldPath, plugin)) {
         plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
         return
@@ -282,8 +284,11 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
     const normalizedOldPath = normalizePath(data.oldPath)
     const normalizedNewPath = normalizePath(data.path)
 
+    let acquired = false;
     try {
         await plugin.lockManager.withLock(normalizedNewPath, async () => {
+            acquired = true;
+            if (!ownsSource()) return;
             const folder = plugin.app.vault.getAbstractFileByPath(normalizedOldPath)
             if (folder instanceof TFolder) {
                 plugin.addIgnoredFile(normalizedNewPath)
@@ -295,7 +300,15 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
                 try {
                     const target = plugin.app.vault.getAbstractFileByPath(normalizedNewPath)
                     if (target) {
-                        await vaultDelete(plugin.app.vault, target, true)
+                        if (target === folder) return;
+                        // A remote folder rename never owns unrelated local
+                        // target contents; recursive deletion would bypass the
+                        // per-attachment conflict protections entirely.
+                        const message = `文件夹重命名冲突：目标已存在，已保留本地内容 ${normalizedNewPath}`;
+                        SyncLogManager.getInstance().addLog('receive', 'FolderRename', message, 'error', data.path, sourceVault, { traceId });
+                        showSyncNotice(message, 10000);
+                        if (ownsSource()) plugin.folderSyncTasks.failed++;
+                        return;
                     }
 
                     await plugin.app.vault.rename(folder, normalizedNewPath)
@@ -322,19 +335,25 @@ export const receiveFolderSyncRename = async function (data: FolderSyncRenameMes
                 }
             }
         }, { maxRetries: 10, retryInterval: 100 });
+        if (!acquired && ownsSource()) {
+            plugin.folderSyncTasks.failed++;
+            SyncLogManager.getInstance().addLog('receive', 'FolderRename', '文件夹重命名等待锁超时，原目录已保留。', 'error', data.path, sourceVault, { traceId });
+        }
     } catch (e) {
         dumpError(`[FastSync] Failed to receiveFolderSyncRename: ${normalizedOldPath} -> ${normalizedNewPath}`, e);
         if (!checkAndNotifyCaseConflict(e, data.path, plugin, 'FolderRename', traceId, sourceVault)) {
             SyncLogManager.getInstance().addLog('receive', 'FolderRename', e instanceof Error ? e.message : String(e), 'error', data.path, sourceVault, { traceId });
         }
-        if (sourceContext === (plugin.syncState.activeSyncContext ?? "")) plugin.folderSyncTasks.failed++
+        if (ownsSource()) plugin.folderSyncTasks.failed++
     } finally {
-        // 实时更新同步时间戳，与 note 端保持一致
-        // Update sync timestamp in real time, consistent with note side
-        if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
-            plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
+        if (ownsSource()) {
+            // 实时更新同步时间戳，与 note 端保持一致
+            // Update sync timestamp in real time, consistent with note side
+            if (data.lastTime && data.lastTime > Number(plugin.localStorageManager.getMetadata("lastFolderSyncTime"))) {
+                plugin.localStorageManager.setMetadata("lastFolderSyncTime", data.lastTime)
+            }
+            plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
         }
-        plugin.recordSyncCompleted('folder', data.pageIndex, sourceContext)
     }
 }
 

@@ -165,6 +165,59 @@ test('Protobuf request envelope retains the diagnostic root independently from r
   assert.equal(envelope.traceId, 'root-proto'); assert.equal(request.context, 'context-proto'); assert.equal(request.pageIndex, 2);
 });
 
+test('safe re-push capability is negotiated and failures bypass generic conflict handling', () => {
+  const actions = moduleAt('lib/sync/websocket_action.ts');
+  const failures = []; let genericErrors = 0;
+  const { WebSocketManager } = moduleAt('lib/sync/websocket_manager.ts', id => {
+    if (id === './operator_file') return { receiveFileRePushFailed: (data) => failures.push(data), clearUploadQueue() {} };
+    if (id === './websocket_action') return actions;
+    if (id === './sync_log_manager') return { SyncLogManager: { getInstance: () => ({ logReceivedMessage() {} }) } };
+    if (id.includes('helpers')) return { dump() {}, showSyncNotice() {}, safeStringify: JSON.stringify };
+    return {};
+  });
+  const plugin = {
+    settings: { vault: 'Test' }, syncState: { activeSyncContext: 'A' }, currentSyncType: 'full',
+    diagnostics: new diagnostics.DiagnosticContexts(),
+    localStorageManager: { getMetadata() {}, setMetadata() {} },
+    retryRecovery: { acceptsContext: () => true, error() { genericErrors++; return true; } },
+  };
+  const socket = Object.create(WebSocketManager.prototype);
+  socket.plugin = plugin; socket.client = { notifyStatusChange() {}, unRegister() {} };
+  socket.sendClientInfo = () => {}; socket.StartHandle = async () => {};
+  socket.handleStructuredMessage('Authorization', { code: 200, data: { attachmentRePushSafeSupported: true, attachmentMutationCASSupported: true } });
+  assert.equal(plugin.syncState.attachmentRePushSafeSupported, true);
+  assert.equal(plugin.syncState.attachmentMutationCASSupported, true);
+  socket.handleStructuredMessage('FileRePushFailed', { code: 461, status: false, vault: 'Test', context: 'A', data: { path: 'file.bin' } });
+  assert.equal(failures.length, 1); assert.equal(failures[0].path, 'file.bin'); assert.equal(genericErrors, 0);
+  socket.unRegister(); assert.equal(plugin.syncState.attachmentRePushSafeSupported, false); assert.equal(plugin.syncState.attachmentMutationCASSupported, false);
+  socket.handleStructuredMessage('Authorization', { code: 200, data: {} });
+  assert.equal(plugin.syncState.attachmentRePushSafeSupported, false);
+  assert.equal(plugin.syncState.attachmentMutationCASSupported, false);
+});
+
+test('websocket dispatches identified direct mutations across sync and retry boundaries only', () => {
+  const received = []; const actions = moduleAt('lib/sync/websocket_action.ts');
+  const { WebSocketManager } = moduleAt('lib/sync/websocket_manager.ts', id => {
+    if (id === './operator_file') return { receiveFileMutationConflict: data => received.push(['conflict', data]), receiveFileMutationFailed: data => received.push(['failed', data]) };
+    if (id === './operator') return { receiveOperators: new Map([['FileDeleteAck', data => received.push(['delete', data])], ['FileRenameAck', data => received.push(['rename', data])]]) };
+    if (id === './websocket_action') return actions;
+    if (id === './sync_log_manager') return { SyncLogManager: { getInstance: () => ({ logReceivedMessage() {} }) } };
+    if (id.includes('helpers')) return { dump() {}, showSyncNotice() {}, safeStringify: JSON.stringify };
+    return {};
+  });
+  const socket = Object.create(WebSocketManager.prototype);
+  socket.plugin = { settings: { vault: 'Test' }, syncState: { activeSyncContext: 'B' }, diagnostics: new diagnostics.DiagnosticContexts(), retryRecovery: { acceptsContext: () => false }, currentSyncType: 'full' };
+  socket.client = { notifyActivity() {} };
+  const message = { code: 200, vault: 'Test', context: 'A', data: { operationId: 'id', path: 'x' } };
+  for (const action of ['FileDeleteAck', 'FileRenameAck', 'FileMutationConflict', 'FileMutationFailed']) socket.handleStructuredMessage(action, message);
+  assert.deepEqual(received.map(item => item[0]), ['delete', 'rename', 'conflict', 'failed']);
+  socket.handleStructuredMessage('FileDeleteAck', { ...message, pageIndex: 1 });
+  socket.handleStructuredMessage('FileMutationConflict', { ...message, pageIndex: 1 });
+  socket.handleStructuredMessage('FileDeleteAck', { ...message, data: { path: 'x' } });
+  socket.handleStructuredMessage('FileDeleteAck', { ...message, vault: 'Other' });
+  assert.equal(received.length, 4);
+});
+
 test('real Go trace fixture survives PB decoding, failure logging, page retry and full restart', { skip: !process.env.FNS_DIAGNOSTIC_CONTRACT_PATH }, async () => {
   const fixture = JSON.parse(fs.readFileSync(process.env.FNS_DIAGNOSTIC_CONTRACT_PATH, 'utf8'));
   assert.equal(fixture.echoedRequestId, fixture.traceId);

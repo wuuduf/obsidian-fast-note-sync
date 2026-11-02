@@ -131,3 +131,47 @@ for (const format of ["text", "binary"]) {
     assert.equal(sockets[0].sent.length, 1);
   });
 }
+
+for (const format of ["text", "binary"]) {
+  test(`${format} cancellation before the send continuation suppresses the write`, async () => {
+    const { client, sockets } = harness();
+    await client.register();
+    let cancelled = false;
+    let completed = 0;
+    const before = () => cancelled;
+    const after = () => { completed++; };
+    const sending = format === "binary"
+      ? client.SendBinary(new Uint8Array([1]), "00", before, after)
+      : client.SendMessage("NoteModify", { path: "a.md" }, before, after);
+    cancelled = true;
+    const result = await sending;
+    assert.equal(result, format === "binary" ? "cancelled" : true);
+    assert.equal(sockets[0].sent.length, 0);
+    assert.equal(completed, 0);
+  });
+}
+
+for (const format of ["text", "binary"]) {
+  test(`${format} cancellation interrupts backpressure without sending or calling after`, async () => {
+    const { client, sockets, timers } = harness();
+    await client.register();
+    client.ws.bufferedAmount = 6 * 1024 * 1024;
+    let cancelled = false;
+    let completed = 0;
+    const before = () => cancelled;
+    const after = () => { completed++; };
+    const sending = format === "binary"
+      ? client.SendBinary(new Uint8Array([1]), "00", before, after)
+      : client.SendMessage("NoteModify", { path: "a.md" }, before, after);
+    assert.equal(timers.length, 1);
+    cancelled = true;
+    timers[0]();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(timers.length, 1, "cancelled writes must stop waiting even while the buffer remains full");
+    const result = await sending;
+    assert.equal(result, format === "binary" ? "cancelled" : true);
+    assert.equal(sockets[0].sent.length, 0);
+    assert.equal(completed, 0);
+  });
+}

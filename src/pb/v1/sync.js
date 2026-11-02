@@ -9629,6 +9629,7 @@ export const proto = $root.proto = (() => {
              * @property {Array.<proto.v1.FileSyncDelFile.$Properties>|null} [missingFiles] FileSyncRequest missingFiles
              * @property {number|null} [batchIndex] FileSyncRequest batchIndex
              * @property {number|null} [totalBatches] FileSyncRequest totalBatches
+             * @property {Array.<proto.v1.FileSyncDelFile.$Properties>|null} [protectedFiles] FileSyncRequest protectedFiles
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -9657,6 +9658,7 @@ export const proto = $root.proto = (() => {
                 this.files = [];
                 this.delFiles = [];
                 this.missingFiles = [];
+                this.protectedFiles = [];
                 if (properties)
                     for (let keys = $Object.keys(properties), i = 0; i < keys.length; ++i)
                         if (properties[keys[i]] != null && keys[i] !== "__proto__")
@@ -9728,6 +9730,14 @@ export const proto = $root.proto = (() => {
             FileSyncRequest.prototype.totalBatches = 0;
 
             /**
+             * FileSyncRequest protectedFiles.
+             * @member {Array.<proto.v1.FileSyncDelFile.$Properties>} protectedFiles
+             * @memberof proto.v1.FileSyncRequest
+             * @instance
+             */
+            FileSyncRequest.prototype.protectedFiles = $util.emptyArray;
+
+            /**
              * Creates a new FileSyncRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileSyncRequest
@@ -9778,6 +9788,9 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 7, wireType 0 =*/56).int32(message.batchIndex);
                 if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches") && message.totalBatches !== 0)
                     writer.uint32(/* id 8, wireType 0 =*/64).int32(message.totalBatches);
+                if (message.protectedFiles != null && message.protectedFiles.length)
+                    for (let i = 0; i < message.protectedFiles.length; ++i)
+                        $root.proto.v1.FileSyncDelFile.encode(message.protectedFiles[i], writer.uint32(/* id 9, wireType 2 =*/74).fork(), _depth + 1).ldelim();
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -9894,6 +9907,14 @@ export const proto = $root.proto = (() => {
                                 delete message.totalBatches;
                             continue;
                         }
+                    case 9: {
+                            if (wireType !== 2)
+                                break;
+                            if (!(message.protectedFiles && message.protectedFiles.length))
+                                message.protectedFiles = [];
+                            message.protectedFiles.push($root.proto.v1.FileSyncDelFile.decode(reader, reader.uint32(), $undefined, _depth + 1));
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -9979,6 +10000,15 @@ export const proto = $root.proto = (() => {
                 if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches"))
                     if (!$util.isInteger(message.totalBatches))
                         return "totalBatches: integer expected";
+                if (message.protectedFiles != null && $Object.hasOwnProperty.call(message, "protectedFiles")) {
+                    if (!$Array.isArray(message.protectedFiles))
+                        return "protectedFiles: array expected";
+                    for (let i = 0; i < message.protectedFiles.length; ++i) {
+                        let error = $root.proto.v1.FileSyncDelFile.verify(message.protectedFiles[i], _depth + 1);
+                        if (error)
+                            return "protectedFiles." + error;
+                    }
+                }
                 return null;
             };
 
@@ -10052,6 +10082,16 @@ export const proto = $root.proto = (() => {
                 if (object.totalBatches != null)
                     if ($Number(object.totalBatches) !== 0)
                         message.totalBatches = object.totalBatches | 0;
+                if (object.protectedFiles) {
+                    if (!$Array.isArray(object.protectedFiles))
+                        throw $TypeError(".proto.v1.FileSyncRequest.protectedFiles: array expected");
+                    message.protectedFiles = $Array(object.protectedFiles.length);
+                    for (let i = 0; i < object.protectedFiles.length; ++i) {
+                        if (!$util.isObject(object.protectedFiles[i]))
+                            throw $TypeError(".proto.v1.FileSyncRequest.protectedFiles: object expected");
+                        message.protectedFiles[i] = $root.proto.v1.FileSyncDelFile.fromObject(object.protectedFiles[i], _depth + 1);
+                    }
+                }
                 return message;
             };
 
@@ -10076,6 +10116,7 @@ export const proto = $root.proto = (() => {
                     object.files = [];
                     object.delFiles = [];
                     object.missingFiles = [];
+                    object.protectedFiles = [];
                 }
                 if (options.defaults) {
                     object.context = "";
@@ -10118,6 +10159,11 @@ export const proto = $root.proto = (() => {
                     object.batchIndex = message.batchIndex;
                 if (message.totalBatches != null && $Object.hasOwnProperty.call(message, "totalBatches"))
                     object.totalBatches = message.totalBatches;
+                if (message.protectedFiles && message.protectedFiles.length) {
+                    object.protectedFiles = $Array(message.protectedFiles.length);
+                    for (let j = 0; j < message.protectedFiles.length; ++j)
+                        object.protectedFiles[j] = $root.proto.v1.FileSyncDelFile.toObject(message.protectedFiles[j], options, _depth + 1);
+                }
                 return object;
             };
 
@@ -10160,6 +10206,13 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [size] FileSyncCheckRequest size
              * @property {number|Long|null} [mtime] FileSyncCheckRequest mtime
              * @property {number|Long|null} [ctime] FileSyncCheckRequest ctime
+             * @property {string|null} [snapshotSha256] FileSyncCheckRequest snapshotSha256
+             * @property {string|null} [resumeSessionId] FileSyncCheckRequest resumeSessionId
+             * @property {string|null} [baseHash] FileSyncCheckRequest baseHash
+             * @property {boolean|null} [baseHashMissing] FileSyncCheckRequest baseHashMissing
+             * @property {string|null} [baseSha256] FileSyncCheckRequest baseSha256
+             * @property {string|null} [baseVersion] FileSyncCheckRequest baseVersion
+             * @property {boolean|null} [versionGuard] FileSyncCheckRequest versionGuard
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -10240,6 +10293,62 @@ export const proto = $root.proto = (() => {
             FileSyncCheckRequest.prototype.ctime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * FileSyncCheckRequest snapshotSha256.
+             * @member {string} snapshotSha256
+             * @memberof proto.v1.FileSyncCheckRequest
+             * @instance
+             */
+            FileSyncCheckRequest.prototype.snapshotSha256 = "";
+
+            /**
+             * FileSyncCheckRequest resumeSessionId.
+             * @member {string} resumeSessionId
+             * @memberof proto.v1.FileSyncCheckRequest
+             * @instance
+             */
+            FileSyncCheckRequest.prototype.resumeSessionId = "";
+
+            /**
+             * FileSyncCheckRequest baseHash.
+             * @member {string} baseHash
+             * @memberof proto.v1.FileSyncCheckRequest
+             * @instance
+             */
+            FileSyncCheckRequest.prototype.baseHash = "";
+
+            /**
+             * FileSyncCheckRequest baseHashMissing.
+             * @member {boolean} baseHashMissing
+             * @memberof proto.v1.FileSyncCheckRequest
+             * @instance
+             */
+            FileSyncCheckRequest.prototype.baseHashMissing = false;
+
+            /**
+             * FileSyncCheckRequest baseSha256.
+             * @member {string} baseSha256
+             * @memberof proto.v1.FileSyncCheckRequest
+             * @instance
+             */
+            FileSyncCheckRequest.prototype.baseSha256 = "";
+
+            /**
+             * FileSyncCheckRequest baseVersion.
+             * @member {string} baseVersion
+             * @memberof proto.v1.FileSyncCheckRequest
+             * @instance
+             */
+            FileSyncCheckRequest.prototype.baseVersion = "";
+
+            /**
+             * FileSyncCheckRequest versionGuard.
+             * @member {boolean} versionGuard
+             * @memberof proto.v1.FileSyncCheckRequest
+             * @instance
+             */
+            FileSyncCheckRequest.prototype.versionGuard = false;
+
+            /**
              * Creates a new FileSyncCheckRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileSyncCheckRequest
@@ -10283,6 +10392,20 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.mtime);
                 if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.ctime);
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256") && message.snapshotSha256 !== "")
+                    writer.uint32(/* id 7, wireType 2 =*/58).string(message.snapshotSha256);
+                if (message.resumeSessionId != null && $Object.hasOwnProperty.call(message, "resumeSessionId") && message.resumeSessionId !== "")
+                    writer.uint32(/* id 8, wireType 2 =*/66).string(message.resumeSessionId);
+                if (message.baseHash != null && $Object.hasOwnProperty.call(message, "baseHash") && message.baseHash !== "")
+                    writer.uint32(/* id 9, wireType 2 =*/74).string(message.baseHash);
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing") && message.baseHashMissing !== false)
+                    writer.uint32(/* id 10, wireType 0 =*/80).bool(message.baseHashMissing);
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256") && message.baseSha256 !== "")
+                    writer.uint32(/* id 11, wireType 2 =*/90).string(message.baseSha256);
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion") && message.baseVersion !== "")
+                    writer.uint32(/* id 12, wireType 2 =*/98).string(message.baseVersion);
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard") && message.versionGuard !== false)
+                    writer.uint32(/* id 13, wireType 0 =*/104).bool(message.versionGuard);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -10384,6 +10507,69 @@ export const proto = $root.proto = (() => {
                                 delete message.ctime;
                             continue;
                         }
+                    case 7: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.snapshotSha256 = value;
+                            else
+                                delete message.snapshotSha256;
+                            continue;
+                        }
+                    case 8: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.resumeSessionId = value;
+                            else
+                                delete message.resumeSessionId;
+                            continue;
+                        }
+                    case 9: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseHash = value;
+                            else
+                                delete message.baseHash;
+                            continue;
+                        }
+                    case 10: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.baseHashMissing = value;
+                            else
+                                delete message.baseHashMissing;
+                            continue;
+                        }
+                    case 11: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseSha256 = value;
+                            else
+                                delete message.baseSha256;
+                            continue;
+                        }
+                    case 12: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseVersion = value;
+                            else
+                                delete message.baseVersion;
+                            continue;
+                        }
+                    case 13: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.versionGuard = value;
+                            else
+                                delete message.versionGuard;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -10445,6 +10631,27 @@ export const proto = $root.proto = (() => {
                 if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
                     if (!$util.isInteger(message.ctime) && !(message.ctime && $util.isInteger(message.ctime.low) && $util.isInteger(message.ctime.high)))
                         return "ctime: integer|Long expected";
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256"))
+                    if (!$util.isString(message.snapshotSha256))
+                        return "snapshotSha256: string expected";
+                if (message.resumeSessionId != null && $Object.hasOwnProperty.call(message, "resumeSessionId"))
+                    if (!$util.isString(message.resumeSessionId))
+                        return "resumeSessionId: string expected";
+                if (message.baseHash != null && $Object.hasOwnProperty.call(message, "baseHash"))
+                    if (!$util.isString(message.baseHash))
+                        return "baseHash: string expected";
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    if (typeof message.baseHashMissing !== "boolean")
+                        return "baseHashMissing: boolean expected";
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    if (!$util.isString(message.baseSha256))
+                        return "baseSha256: string expected";
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    if (!$util.isString(message.baseVersion))
+                        return "baseVersion: string expected";
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    if (typeof message.versionGuard !== "boolean")
+                        return "versionGuard: boolean expected";
                 return null;
             };
 
@@ -10505,6 +10712,27 @@ export const proto = $root.proto = (() => {
                             message.ctime = object.ctime;
                         else if (typeof object.ctime === "object")
                             message.ctime = new $util.LongBits(object.ctime.low >>> 0, object.ctime.high >>> 0).toNumber();
+                if (object.snapshotSha256 != null)
+                    if (typeof object.snapshotSha256 !== "string" || object.snapshotSha256.length)
+                        message.snapshotSha256 = $String(object.snapshotSha256);
+                if (object.resumeSessionId != null)
+                    if (typeof object.resumeSessionId !== "string" || object.resumeSessionId.length)
+                        message.resumeSessionId = $String(object.resumeSessionId);
+                if (object.baseHash != null)
+                    if (typeof object.baseHash !== "string" || object.baseHash.length)
+                        message.baseHash = $String(object.baseHash);
+                if (object.baseHashMissing != null)
+                    if (object.baseHashMissing)
+                        message.baseHashMissing = $Boolean(object.baseHashMissing);
+                if (object.baseSha256 != null)
+                    if (typeof object.baseSha256 !== "string" || object.baseSha256.length)
+                        message.baseSha256 = $String(object.baseSha256);
+                if (object.baseVersion != null)
+                    if (typeof object.baseVersion !== "string" || object.baseVersion.length)
+                        message.baseVersion = $String(object.baseVersion);
+                if (object.versionGuard != null)
+                    if (object.versionGuard)
+                        message.versionGuard = $Boolean(object.versionGuard);
                 return message;
             };
 
@@ -10544,6 +10772,13 @@ export const proto = $root.proto = (() => {
                         object.ctime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
                     } else
                         object.ctime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.snapshotSha256 = "";
+                    object.resumeSessionId = "";
+                    object.baseHash = "";
+                    object.baseHashMissing = false;
+                    object.baseSha256 = "";
+                    object.baseVersion = "";
+                    object.versionGuard = false;
                 }
                 if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
                     object.path = message.path;
@@ -10572,6 +10807,20 @@ export const proto = $root.proto = (() => {
                         object.ctime = options.longs === $String ? $String(message.ctime) : message.ctime;
                     else
                         object.ctime = options.longs === $String ? $util.Long.prototype.toString.call(message.ctime) : options.longs === $Number ? new $util.LongBits(message.ctime.low >>> 0, message.ctime.high >>> 0).toNumber() : message.ctime;
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256"))
+                    object.snapshotSha256 = message.snapshotSha256;
+                if (message.resumeSessionId != null && $Object.hasOwnProperty.call(message, "resumeSessionId"))
+                    object.resumeSessionId = message.resumeSessionId;
+                if (message.baseHash != null && $Object.hasOwnProperty.call(message, "baseHash"))
+                    object.baseHash = message.baseHash;
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    object.baseHashMissing = message.baseHashMissing;
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    object.baseSha256 = message.baseSha256;
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    object.baseVersion = message.baseVersion;
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    object.versionGuard = message.versionGuard;
                 return object;
             };
 
@@ -10610,6 +10859,10 @@ export const proto = $root.proto = (() => {
              * @typedef {Object} proto.v1.FileSyncDelFile.$Properties
              * @property {string|null} [path] FileSyncDelFile path
              * @property {string|null} [pathHash] FileSyncDelFile pathHash
+             * @property {string|null} [baseSha256] FileSyncDelFile baseSha256
+             * @property {boolean|null} [baseHashMissing] FileSyncDelFile baseHashMissing
+             * @property {string|null} [baseVersion] FileSyncDelFile baseVersion
+             * @property {boolean|null} [versionGuard] FileSyncDelFile versionGuard
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -10658,6 +10911,38 @@ export const proto = $root.proto = (() => {
             FileSyncDelFile.prototype.pathHash = "";
 
             /**
+             * FileSyncDelFile baseSha256.
+             * @member {string} baseSha256
+             * @memberof proto.v1.FileSyncDelFile
+             * @instance
+             */
+            FileSyncDelFile.prototype.baseSha256 = "";
+
+            /**
+             * FileSyncDelFile baseHashMissing.
+             * @member {boolean} baseHashMissing
+             * @memberof proto.v1.FileSyncDelFile
+             * @instance
+             */
+            FileSyncDelFile.prototype.baseHashMissing = false;
+
+            /**
+             * FileSyncDelFile baseVersion.
+             * @member {string} baseVersion
+             * @memberof proto.v1.FileSyncDelFile
+             * @instance
+             */
+            FileSyncDelFile.prototype.baseVersion = "";
+
+            /**
+             * FileSyncDelFile versionGuard.
+             * @member {boolean} versionGuard
+             * @memberof proto.v1.FileSyncDelFile
+             * @instance
+             */
+            FileSyncDelFile.prototype.versionGuard = false;
+
+            /**
              * Creates a new FileSyncDelFile instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileSyncDelFile
@@ -10693,6 +10978,14 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256") && message.baseSha256 !== "")
+                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.baseSha256);
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing") && message.baseHashMissing !== false)
+                    writer.uint32(/* id 4, wireType 0 =*/32).bool(message.baseHashMissing);
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion") && message.baseVersion !== "")
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.baseVersion);
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard") && message.versionGuard !== false)
+                    writer.uint32(/* id 6, wireType 0 =*/48).bool(message.versionGuard);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -10758,6 +11051,42 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 3: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseSha256 = value;
+                            else
+                                delete message.baseSha256;
+                            continue;
+                        }
+                    case 4: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.baseHashMissing = value;
+                            else
+                                delete message.baseHashMissing;
+                            continue;
+                        }
+                    case 5: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseVersion = value;
+                            else
+                                delete message.baseVersion;
+                            continue;
+                        }
+                    case 6: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.versionGuard = value;
+                            else
+                                delete message.versionGuard;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -10807,6 +11136,18 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    if (!$util.isString(message.baseSha256))
+                        return "baseSha256: string expected";
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    if (typeof message.baseHashMissing !== "boolean")
+                        return "baseHashMissing: boolean expected";
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    if (!$util.isString(message.baseVersion))
+                        return "baseVersion: string expected";
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    if (typeof message.versionGuard !== "boolean")
+                        return "versionGuard: boolean expected";
                 return null;
             };
 
@@ -10834,6 +11175,18 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.baseSha256 != null)
+                    if (typeof object.baseSha256 !== "string" || object.baseSha256.length)
+                        message.baseSha256 = $String(object.baseSha256);
+                if (object.baseHashMissing != null)
+                    if (object.baseHashMissing)
+                        message.baseHashMissing = $Boolean(object.baseHashMissing);
+                if (object.baseVersion != null)
+                    if (typeof object.baseVersion !== "string" || object.baseVersion.length)
+                        message.baseVersion = $String(object.baseVersion);
+                if (object.versionGuard != null)
+                    if (object.versionGuard)
+                        message.versionGuard = $Boolean(object.versionGuard);
                 return message;
             };
 
@@ -10857,11 +11210,23 @@ export const proto = $root.proto = (() => {
                 if (options.defaults) {
                     object.path = "";
                     object.pathHash = "";
+                    object.baseSha256 = "";
+                    object.baseHashMissing = false;
+                    object.baseVersion = "";
+                    object.versionGuard = false;
                 }
                 if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    object.baseSha256 = message.baseSha256;
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    object.baseHashMissing = message.baseHashMissing;
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    object.baseVersion = message.baseVersion;
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    object.versionGuard = message.versionGuard;
                 return object;
             };
 
@@ -10906,6 +11271,13 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [ctime] FileUploadCheckRequest ctime
              * @property {number|Long|null} [mtime] FileUploadCheckRequest mtime
              * @property {string|null} [context] FileUploadCheckRequest context
+             * @property {string|null} [snapshotSha256] FileUploadCheckRequest snapshotSha256
+             * @property {string|null} [resumeSessionId] FileUploadCheckRequest resumeSessionId
+             * @property {string|null} [baseHash] FileUploadCheckRequest baseHash
+             * @property {boolean|null} [baseHashMissing] FileUploadCheckRequest baseHashMissing
+             * @property {string|null} [baseSha256] FileUploadCheckRequest baseSha256
+             * @property {string|null} [baseVersion] FileUploadCheckRequest baseVersion
+             * @property {boolean|null} [versionGuard] FileUploadCheckRequest versionGuard
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -11002,6 +11374,62 @@ export const proto = $root.proto = (() => {
             FileUploadCheckRequest.prototype.context = "";
 
             /**
+             * FileUploadCheckRequest snapshotSha256.
+             * @member {string} snapshotSha256
+             * @memberof proto.v1.FileUploadCheckRequest
+             * @instance
+             */
+            FileUploadCheckRequest.prototype.snapshotSha256 = "";
+
+            /**
+             * FileUploadCheckRequest resumeSessionId.
+             * @member {string} resumeSessionId
+             * @memberof proto.v1.FileUploadCheckRequest
+             * @instance
+             */
+            FileUploadCheckRequest.prototype.resumeSessionId = "";
+
+            /**
+             * FileUploadCheckRequest baseHash.
+             * @member {string} baseHash
+             * @memberof proto.v1.FileUploadCheckRequest
+             * @instance
+             */
+            FileUploadCheckRequest.prototype.baseHash = "";
+
+            /**
+             * FileUploadCheckRequest baseHashMissing.
+             * @member {boolean} baseHashMissing
+             * @memberof proto.v1.FileUploadCheckRequest
+             * @instance
+             */
+            FileUploadCheckRequest.prototype.baseHashMissing = false;
+
+            /**
+             * FileUploadCheckRequest baseSha256.
+             * @member {string} baseSha256
+             * @memberof proto.v1.FileUploadCheckRequest
+             * @instance
+             */
+            FileUploadCheckRequest.prototype.baseSha256 = "";
+
+            /**
+             * FileUploadCheckRequest baseVersion.
+             * @member {string} baseVersion
+             * @memberof proto.v1.FileUploadCheckRequest
+             * @instance
+             */
+            FileUploadCheckRequest.prototype.baseVersion = "";
+
+            /**
+             * FileUploadCheckRequest versionGuard.
+             * @member {boolean} versionGuard
+             * @memberof proto.v1.FileUploadCheckRequest
+             * @instance
+             */
+            FileUploadCheckRequest.prototype.versionGuard = false;
+
+            /**
              * Creates a new FileUploadCheckRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileUploadCheckRequest
@@ -11049,6 +11477,20 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.mtime);
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 8, wireType 2 =*/66).string(message.context);
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256") && message.snapshotSha256 !== "")
+                    writer.uint32(/* id 9, wireType 2 =*/74).string(message.snapshotSha256);
+                if (message.resumeSessionId != null && $Object.hasOwnProperty.call(message, "resumeSessionId") && message.resumeSessionId !== "")
+                    writer.uint32(/* id 10, wireType 2 =*/82).string(message.resumeSessionId);
+                if (message.baseHash != null && $Object.hasOwnProperty.call(message, "baseHash") && message.baseHash !== "")
+                    writer.uint32(/* id 11, wireType 2 =*/90).string(message.baseHash);
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing") && message.baseHashMissing !== false)
+                    writer.uint32(/* id 12, wireType 0 =*/96).bool(message.baseHashMissing);
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256") && message.baseSha256 !== "")
+                    writer.uint32(/* id 13, wireType 2 =*/106).string(message.baseSha256);
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion") && message.baseVersion !== "")
+                    writer.uint32(/* id 14, wireType 2 =*/114).string(message.baseVersion);
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard") && message.versionGuard !== false)
+                    writer.uint32(/* id 15, wireType 0 =*/120).bool(message.versionGuard);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -11168,6 +11610,69 @@ export const proto = $root.proto = (() => {
                                 delete message.context;
                             continue;
                         }
+                    case 9: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.snapshotSha256 = value;
+                            else
+                                delete message.snapshotSha256;
+                            continue;
+                        }
+                    case 10: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.resumeSessionId = value;
+                            else
+                                delete message.resumeSessionId;
+                            continue;
+                        }
+                    case 11: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseHash = value;
+                            else
+                                delete message.baseHash;
+                            continue;
+                        }
+                    case 12: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.baseHashMissing = value;
+                            else
+                                delete message.baseHashMissing;
+                            continue;
+                        }
+                    case 13: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseSha256 = value;
+                            else
+                                delete message.baseSha256;
+                            continue;
+                        }
+                    case 14: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseVersion = value;
+                            else
+                                delete message.baseVersion;
+                            continue;
+                        }
+                    case 15: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.versionGuard = value;
+                            else
+                                delete message.versionGuard;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -11235,6 +11740,27 @@ export const proto = $root.proto = (() => {
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
                     if (!$util.isString(message.context))
                         return "context: string expected";
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256"))
+                    if (!$util.isString(message.snapshotSha256))
+                        return "snapshotSha256: string expected";
+                if (message.resumeSessionId != null && $Object.hasOwnProperty.call(message, "resumeSessionId"))
+                    if (!$util.isString(message.resumeSessionId))
+                        return "resumeSessionId: string expected";
+                if (message.baseHash != null && $Object.hasOwnProperty.call(message, "baseHash"))
+                    if (!$util.isString(message.baseHash))
+                        return "baseHash: string expected";
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    if (typeof message.baseHashMissing !== "boolean")
+                        return "baseHashMissing: boolean expected";
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    if (!$util.isString(message.baseSha256))
+                        return "baseSha256: string expected";
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    if (!$util.isString(message.baseVersion))
+                        return "baseVersion: string expected";
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    if (typeof message.versionGuard !== "boolean")
+                        return "versionGuard: boolean expected";
                 return null;
             };
 
@@ -11301,6 +11827,27 @@ export const proto = $root.proto = (() => {
                 if (object.context != null)
                     if (typeof object.context !== "string" || object.context.length)
                         message.context = $String(object.context);
+                if (object.snapshotSha256 != null)
+                    if (typeof object.snapshotSha256 !== "string" || object.snapshotSha256.length)
+                        message.snapshotSha256 = $String(object.snapshotSha256);
+                if (object.resumeSessionId != null)
+                    if (typeof object.resumeSessionId !== "string" || object.resumeSessionId.length)
+                        message.resumeSessionId = $String(object.resumeSessionId);
+                if (object.baseHash != null)
+                    if (typeof object.baseHash !== "string" || object.baseHash.length)
+                        message.baseHash = $String(object.baseHash);
+                if (object.baseHashMissing != null)
+                    if (object.baseHashMissing)
+                        message.baseHashMissing = $Boolean(object.baseHashMissing);
+                if (object.baseSha256 != null)
+                    if (typeof object.baseSha256 !== "string" || object.baseSha256.length)
+                        message.baseSha256 = $String(object.baseSha256);
+                if (object.baseVersion != null)
+                    if (typeof object.baseVersion !== "string" || object.baseVersion.length)
+                        message.baseVersion = $String(object.baseVersion);
+                if (object.versionGuard != null)
+                    if (object.versionGuard)
+                        message.versionGuard = $Boolean(object.versionGuard);
                 return message;
             };
 
@@ -11342,6 +11889,13 @@ export const proto = $root.proto = (() => {
                     } else
                         object.mtime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
                     object.context = "";
+                    object.snapshotSha256 = "";
+                    object.resumeSessionId = "";
+                    object.baseHash = "";
+                    object.baseHashMissing = false;
+                    object.baseSha256 = "";
+                    object.baseVersion = "";
+                    object.versionGuard = false;
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -11374,6 +11928,20 @@ export const proto = $root.proto = (() => {
                         object.mtime = options.longs === $String ? $util.Long.prototype.toString.call(message.mtime) : options.longs === $Number ? new $util.LongBits(message.mtime.low >>> 0, message.mtime.high >>> 0).toNumber() : message.mtime;
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
                     object.context = message.context;
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256"))
+                    object.snapshotSha256 = message.snapshotSha256;
+                if (message.resumeSessionId != null && $Object.hasOwnProperty.call(message, "resumeSessionId"))
+                    object.resumeSessionId = message.resumeSessionId;
+                if (message.baseHash != null && $Object.hasOwnProperty.call(message, "baseHash"))
+                    object.baseHash = message.baseHash;
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    object.baseHashMissing = message.baseHashMissing;
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    object.baseSha256 = message.baseSha256;
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    object.baseVersion = message.baseVersion;
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    object.versionGuard = message.versionGuard;
                 return object;
             };
 
@@ -11405,6 +11973,1619 @@ export const proto = $root.proto = (() => {
             return FileUploadCheckRequest;
         })();
 
+        v1.FileConflictMessage = (function() {
+
+            /**
+             * Properties of a FileConflictMessage.
+             * @typedef {Object} proto.v1.FileConflictMessage.$Properties
+             * @property {string|null} [path] FileConflictMessage path
+             * @property {string|null} [pathHash] FileConflictMessage pathHash
+             * @property {string|null} [sessionId] FileConflictMessage sessionId
+             * @property {string|null} [remoteSha256] FileConflictMessage remoteSha256
+             * @property {string|null} [incomingSha256] FileConflictMessage incomingSha256
+             * @property {string|null} [reason] FileConflictMessage reason
+             * @property {string|null} [conflictPath] FileConflictMessage conflictPath
+             * @property {string|null} [remoteVersion] FileConflictMessage remoteVersion
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
+             */
+
+            /**
+             * Properties of a FileConflictMessage.
+             * @memberof proto.v1
+             * @interface IFileConflictMessage
+             * @augments proto.v1.FileConflictMessage.$Properties
+             * @deprecated Use proto.v1.FileConflictMessage.$Properties instead.
+             */
+
+            /**
+             * Shape of a FileConflictMessage.
+             * @typedef {proto.v1.FileConflictMessage.$Properties} proto.v1.FileConflictMessage.$Shape
+             */
+
+            /**
+             * Constructs a new FileConflictMessage.
+             * @memberof proto.v1
+             * @classdesc Represents a FileConflictMessage.
+             * @constructor
+             * @param {proto.v1.FileConflictMessage.$Properties=} [properties] Properties to set
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
+             */
+            const FileConflictMessage = function (properties) {
+                if (properties)
+                    for (let keys = $Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null && keys[i] !== "__proto__")
+                            this[keys[i]] = properties[keys[i]];
+            };
+
+            /**
+             * FileConflictMessage path.
+             * @member {string} path
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             */
+            FileConflictMessage.prototype.path = "";
+
+            /**
+             * FileConflictMessage pathHash.
+             * @member {string} pathHash
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             */
+            FileConflictMessage.prototype.pathHash = "";
+
+            /**
+             * FileConflictMessage sessionId.
+             * @member {string} sessionId
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             */
+            FileConflictMessage.prototype.sessionId = "";
+
+            /**
+             * FileConflictMessage remoteSha256.
+             * @member {string} remoteSha256
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             */
+            FileConflictMessage.prototype.remoteSha256 = "";
+
+            /**
+             * FileConflictMessage incomingSha256.
+             * @member {string} incomingSha256
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             */
+            FileConflictMessage.prototype.incomingSha256 = "";
+
+            /**
+             * FileConflictMessage reason.
+             * @member {string} reason
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             */
+            FileConflictMessage.prototype.reason = "";
+
+            /**
+             * FileConflictMessage conflictPath.
+             * @member {string} conflictPath
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             */
+            FileConflictMessage.prototype.conflictPath = "";
+
+            /**
+             * FileConflictMessage remoteVersion.
+             * @member {string} remoteVersion
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             */
+            FileConflictMessage.prototype.remoteVersion = "";
+
+            /**
+             * Creates a new FileConflictMessage instance using the specified properties.
+             * @function create
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {proto.v1.FileConflictMessage.$Properties=} [properties] Properties to set
+             * @returns {proto.v1.FileConflictMessage} FileConflictMessage instance
+             * @type {{
+             *   (properties: proto.v1.FileConflictMessage.$Shape): proto.v1.FileConflictMessage & proto.v1.FileConflictMessage.$Shape;
+             *   (properties?: proto.v1.FileConflictMessage.$Properties): proto.v1.FileConflictMessage;
+             * }}
+             */
+            FileConflictMessage.create = function(properties) {
+                return new FileConflictMessage(properties);
+            };
+
+            /**
+             * Encodes the specified FileConflictMessage message. Does not implicitly {@link proto.v1.FileConflictMessage.verify|verify} messages.
+             * @function encode
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {proto.v1.FileConflictMessage.$Properties} message FileConflictMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            FileConflictMessage.encode = function (message, writer, _depth) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
+                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
+                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId") && message.sessionId !== "")
+                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.sessionId);
+                if (message.remoteSha256 != null && $Object.hasOwnProperty.call(message, "remoteSha256") && message.remoteSha256 !== "")
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.remoteSha256);
+                if (message.incomingSha256 != null && $Object.hasOwnProperty.call(message, "incomingSha256") && message.incomingSha256 !== "")
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.incomingSha256);
+                if (message.reason != null && $Object.hasOwnProperty.call(message, "reason") && message.reason !== "")
+                    writer.uint32(/* id 6, wireType 2 =*/50).string(message.reason);
+                if (message.conflictPath != null && $Object.hasOwnProperty.call(message, "conflictPath") && message.conflictPath !== "")
+                    writer.uint32(/* id 7, wireType 2 =*/58).string(message.conflictPath);
+                if (message.remoteVersion != null && $Object.hasOwnProperty.call(message, "remoteVersion") && message.remoteVersion !== "")
+                    writer.uint32(/* id 8, wireType 2 =*/66).string(message.remoteVersion);
+                if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
+                    for (let i = 0; i < message.$unknowns.length; ++i)
+                        writer.raw(message.$unknowns[i]);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified FileConflictMessage message, length delimited. Does not implicitly {@link proto.v1.FileConflictMessage.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {proto.v1.FileConflictMessage.$Properties} message FileConflictMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            FileConflictMessage.encodeDelimited = function(message, writer) {
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
+            };
+
+            /**
+             * Decodes a FileConflictMessage message from the specified reader or buffer.
+             * @function decode
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {proto.v1.FileConflictMessage & proto.v1.FileConflictMessage.$Shape} FileConflictMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            FileConflictMessage.decode = function (reader, length, _end, _depth, _target) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $Reader.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let end = length === $undefined ? reader.len : reader.pos + length, message = _target || new $root.proto.v1.FileConflictMessage(), value;
+                while (reader.pos < end) {
+                    let start = reader.pos;
+                    let tag = reader.tag();
+                    if (tag === _end) {
+                        _end = $undefined;
+                        break;
+                    }
+                    let wireType = tag & 7;
+                    switch (tag >>>= 3) {
+                    case 1: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.path = value;
+                            else
+                                delete message.path;
+                            continue;
+                        }
+                    case 2: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.pathHash = value;
+                            else
+                                delete message.pathHash;
+                            continue;
+                        }
+                    case 3: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.sessionId = value;
+                            else
+                                delete message.sessionId;
+                            continue;
+                        }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.remoteSha256 = value;
+                            else
+                                delete message.remoteSha256;
+                            continue;
+                        }
+                    case 5: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.incomingSha256 = value;
+                            else
+                                delete message.incomingSha256;
+                            continue;
+                        }
+                    case 6: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.reason = value;
+                            else
+                                delete message.reason;
+                            continue;
+                        }
+                    case 7: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.conflictPath = value;
+                            else
+                                delete message.conflictPath;
+                            continue;
+                        }
+                    case 8: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.remoteVersion = value;
+                            else
+                                delete message.remoteVersion;
+                            continue;
+                        }
+                    }
+                    reader.skipType(wireType, _depth, tag);
+                    if (!reader.discardUnknown) {
+                        $util.makeProp(message, "$unknowns", false);
+                        (message.$unknowns || (message.$unknowns = [])).push(reader.raw(start, reader.pos));
+                    }
+                }
+                if (_end !== $undefined)
+                    throw $Error("missing end group");
+                return message;
+            };
+
+            /**
+             * Decodes a FileConflictMessage message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {proto.v1.FileConflictMessage & proto.v1.FileConflictMessage.$Shape} FileConflictMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            FileConflictMessage.decodeDelimited = function(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a FileConflictMessage message.
+             * @function verify
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            FileConflictMessage.verify = function (message, _depth) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    return "max depth exceeded";
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                    if (!$util.isString(message.path))
+                        return "path: string expected";
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                    if (!$util.isString(message.pathHash))
+                        return "pathHash: string expected";
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                    if (!$util.isString(message.sessionId))
+                        return "sessionId: string expected";
+                if (message.remoteSha256 != null && $Object.hasOwnProperty.call(message, "remoteSha256"))
+                    if (!$util.isString(message.remoteSha256))
+                        return "remoteSha256: string expected";
+                if (message.incomingSha256 != null && $Object.hasOwnProperty.call(message, "incomingSha256"))
+                    if (!$util.isString(message.incomingSha256))
+                        return "incomingSha256: string expected";
+                if (message.reason != null && $Object.hasOwnProperty.call(message, "reason"))
+                    if (!$util.isString(message.reason))
+                        return "reason: string expected";
+                if (message.conflictPath != null && $Object.hasOwnProperty.call(message, "conflictPath"))
+                    if (!$util.isString(message.conflictPath))
+                        return "conflictPath: string expected";
+                if (message.remoteVersion != null && $Object.hasOwnProperty.call(message, "remoteVersion"))
+                    if (!$util.isString(message.remoteVersion))
+                        return "remoteVersion: string expected";
+                return null;
+            };
+
+            /**
+             * Creates a FileConflictMessage message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {proto.v1.FileConflictMessage} FileConflictMessage
+             */
+            FileConflictMessage.fromObject = function (object, _depth) {
+                if (object instanceof $root.proto.v1.FileConflictMessage)
+                    return object;
+                if (!$util.isObject(object))
+                    throw $TypeError(".proto.v1.FileConflictMessage: object expected");
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let message = new $root.proto.v1.FileConflictMessage();
+                if (object.path != null)
+                    if (typeof object.path !== "string" || object.path.length)
+                        message.path = $String(object.path);
+                if (object.pathHash != null)
+                    if (typeof object.pathHash !== "string" || object.pathHash.length)
+                        message.pathHash = $String(object.pathHash);
+                if (object.sessionId != null)
+                    if (typeof object.sessionId !== "string" || object.sessionId.length)
+                        message.sessionId = $String(object.sessionId);
+                if (object.remoteSha256 != null)
+                    if (typeof object.remoteSha256 !== "string" || object.remoteSha256.length)
+                        message.remoteSha256 = $String(object.remoteSha256);
+                if (object.incomingSha256 != null)
+                    if (typeof object.incomingSha256 !== "string" || object.incomingSha256.length)
+                        message.incomingSha256 = $String(object.incomingSha256);
+                if (object.reason != null)
+                    if (typeof object.reason !== "string" || object.reason.length)
+                        message.reason = $String(object.reason);
+                if (object.conflictPath != null)
+                    if (typeof object.conflictPath !== "string" || object.conflictPath.length)
+                        message.conflictPath = $String(object.conflictPath);
+                if (object.remoteVersion != null)
+                    if (typeof object.remoteVersion !== "string" || object.remoteVersion.length)
+                        message.remoteVersion = $String(object.remoteVersion);
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a FileConflictMessage message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {proto.v1.FileConflictMessage} message FileConflictMessage
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            FileConflictMessage.toObject = function (message, options, _depth) {
+                if (!options)
+                    options = {};
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let object = {};
+                if (options.defaults) {
+                    object.path = "";
+                    object.pathHash = "";
+                    object.sessionId = "";
+                    object.remoteSha256 = "";
+                    object.incomingSha256 = "";
+                    object.reason = "";
+                    object.conflictPath = "";
+                    object.remoteVersion = "";
+                }
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                    object.path = message.path;
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                    object.pathHash = message.pathHash;
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                    object.sessionId = message.sessionId;
+                if (message.remoteSha256 != null && $Object.hasOwnProperty.call(message, "remoteSha256"))
+                    object.remoteSha256 = message.remoteSha256;
+                if (message.incomingSha256 != null && $Object.hasOwnProperty.call(message, "incomingSha256"))
+                    object.incomingSha256 = message.incomingSha256;
+                if (message.reason != null && $Object.hasOwnProperty.call(message, "reason"))
+                    object.reason = message.reason;
+                if (message.conflictPath != null && $Object.hasOwnProperty.call(message, "conflictPath"))
+                    object.conflictPath = message.conflictPath;
+                if (message.remoteVersion != null && $Object.hasOwnProperty.call(message, "remoteVersion"))
+                    object.remoteVersion = message.remoteVersion;
+                return object;
+            };
+
+            /**
+             * Converts this FileConflictMessage to JSON.
+             * @function toJSON
+             * @memberof proto.v1.FileConflictMessage
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            FileConflictMessage.prototype.toJSON = function() {
+                return FileConflictMessage.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the type url for FileConflictMessage
+             * @function getTypeUrl
+             * @memberof proto.v1.FileConflictMessage
+             * @static
+             * @param {string} [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns {string} The type url
+             */
+            FileConflictMessage.getTypeUrl = function(prefix) {
+                if (prefix === $undefined)
+                    prefix = "type.googleapis.com";
+                return prefix + "/proto.v1.FileConflictMessage";
+            };
+
+            return FileConflictMessage;
+        })();
+
+        v1.FileBaselineMessage = (function() {
+
+            /**
+             * Properties of a FileBaselineMessage.
+             * @typedef {Object} proto.v1.FileBaselineMessage.$Properties
+             * @property {string|null} [path] FileBaselineMessage path
+             * @property {string|null} [pathHash] FileBaselineMessage pathHash
+             * @property {string|null} [snapshotSha256] FileBaselineMessage snapshotSha256
+             * @property {string|null} [fileVersion] FileBaselineMessage fileVersion
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
+             */
+
+            /**
+             * Properties of a FileBaselineMessage.
+             * @memberof proto.v1
+             * @interface IFileBaselineMessage
+             * @augments proto.v1.FileBaselineMessage.$Properties
+             * @deprecated Use proto.v1.FileBaselineMessage.$Properties instead.
+             */
+
+            /**
+             * Shape of a FileBaselineMessage.
+             * @typedef {proto.v1.FileBaselineMessage.$Properties} proto.v1.FileBaselineMessage.$Shape
+             */
+
+            /**
+             * Constructs a new FileBaselineMessage.
+             * @memberof proto.v1
+             * @classdesc Represents a FileBaselineMessage.
+             * @constructor
+             * @param {proto.v1.FileBaselineMessage.$Properties=} [properties] Properties to set
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
+             */
+            const FileBaselineMessage = function (properties) {
+                if (properties)
+                    for (let keys = $Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null && keys[i] !== "__proto__")
+                            this[keys[i]] = properties[keys[i]];
+            };
+
+            /**
+             * FileBaselineMessage path.
+             * @member {string} path
+             * @memberof proto.v1.FileBaselineMessage
+             * @instance
+             */
+            FileBaselineMessage.prototype.path = "";
+
+            /**
+             * FileBaselineMessage pathHash.
+             * @member {string} pathHash
+             * @memberof proto.v1.FileBaselineMessage
+             * @instance
+             */
+            FileBaselineMessage.prototype.pathHash = "";
+
+            /**
+             * FileBaselineMessage snapshotSha256.
+             * @member {string} snapshotSha256
+             * @memberof proto.v1.FileBaselineMessage
+             * @instance
+             */
+            FileBaselineMessage.prototype.snapshotSha256 = "";
+
+            /**
+             * FileBaselineMessage fileVersion.
+             * @member {string} fileVersion
+             * @memberof proto.v1.FileBaselineMessage
+             * @instance
+             */
+            FileBaselineMessage.prototype.fileVersion = "";
+
+            /**
+             * Creates a new FileBaselineMessage instance using the specified properties.
+             * @function create
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {proto.v1.FileBaselineMessage.$Properties=} [properties] Properties to set
+             * @returns {proto.v1.FileBaselineMessage} FileBaselineMessage instance
+             * @type {{
+             *   (properties: proto.v1.FileBaselineMessage.$Shape): proto.v1.FileBaselineMessage & proto.v1.FileBaselineMessage.$Shape;
+             *   (properties?: proto.v1.FileBaselineMessage.$Properties): proto.v1.FileBaselineMessage;
+             * }}
+             */
+            FileBaselineMessage.create = function(properties) {
+                return new FileBaselineMessage(properties);
+            };
+
+            /**
+             * Encodes the specified FileBaselineMessage message. Does not implicitly {@link proto.v1.FileBaselineMessage.verify|verify} messages.
+             * @function encode
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {proto.v1.FileBaselineMessage.$Properties} message FileBaselineMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            FileBaselineMessage.encode = function (message, writer, _depth) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path") && message.path !== "")
+                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.path);
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
+                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.pathHash);
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256") && message.snapshotSha256 !== "")
+                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.snapshotSha256);
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion") && message.fileVersion !== "")
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.fileVersion);
+                if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
+                    for (let i = 0; i < message.$unknowns.length; ++i)
+                        writer.raw(message.$unknowns[i]);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified FileBaselineMessage message, length delimited. Does not implicitly {@link proto.v1.FileBaselineMessage.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {proto.v1.FileBaselineMessage.$Properties} message FileBaselineMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            FileBaselineMessage.encodeDelimited = function(message, writer) {
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
+            };
+
+            /**
+             * Decodes a FileBaselineMessage message from the specified reader or buffer.
+             * @function decode
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {proto.v1.FileBaselineMessage & proto.v1.FileBaselineMessage.$Shape} FileBaselineMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            FileBaselineMessage.decode = function (reader, length, _end, _depth, _target) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $Reader.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let end = length === $undefined ? reader.len : reader.pos + length, message = _target || new $root.proto.v1.FileBaselineMessage(), value;
+                while (reader.pos < end) {
+                    let start = reader.pos;
+                    let tag = reader.tag();
+                    if (tag === _end) {
+                        _end = $undefined;
+                        break;
+                    }
+                    let wireType = tag & 7;
+                    switch (tag >>>= 3) {
+                    case 1: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.path = value;
+                            else
+                                delete message.path;
+                            continue;
+                        }
+                    case 2: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.pathHash = value;
+                            else
+                                delete message.pathHash;
+                            continue;
+                        }
+                    case 3: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.snapshotSha256 = value;
+                            else
+                                delete message.snapshotSha256;
+                            continue;
+                        }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.fileVersion = value;
+                            else
+                                delete message.fileVersion;
+                            continue;
+                        }
+                    }
+                    reader.skipType(wireType, _depth, tag);
+                    if (!reader.discardUnknown) {
+                        $util.makeProp(message, "$unknowns", false);
+                        (message.$unknowns || (message.$unknowns = [])).push(reader.raw(start, reader.pos));
+                    }
+                }
+                if (_end !== $undefined)
+                    throw $Error("missing end group");
+                return message;
+            };
+
+            /**
+             * Decodes a FileBaselineMessage message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {proto.v1.FileBaselineMessage & proto.v1.FileBaselineMessage.$Shape} FileBaselineMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            FileBaselineMessage.decodeDelimited = function(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a FileBaselineMessage message.
+             * @function verify
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            FileBaselineMessage.verify = function (message, _depth) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    return "max depth exceeded";
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                    if (!$util.isString(message.path))
+                        return "path: string expected";
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                    if (!$util.isString(message.pathHash))
+                        return "pathHash: string expected";
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256"))
+                    if (!$util.isString(message.snapshotSha256))
+                        return "snapshotSha256: string expected";
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    if (!$util.isString(message.fileVersion))
+                        return "fileVersion: string expected";
+                return null;
+            };
+
+            /**
+             * Creates a FileBaselineMessage message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {proto.v1.FileBaselineMessage} FileBaselineMessage
+             */
+            FileBaselineMessage.fromObject = function (object, _depth) {
+                if (object instanceof $root.proto.v1.FileBaselineMessage)
+                    return object;
+                if (!$util.isObject(object))
+                    throw $TypeError(".proto.v1.FileBaselineMessage: object expected");
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let message = new $root.proto.v1.FileBaselineMessage();
+                if (object.path != null)
+                    if (typeof object.path !== "string" || object.path.length)
+                        message.path = $String(object.path);
+                if (object.pathHash != null)
+                    if (typeof object.pathHash !== "string" || object.pathHash.length)
+                        message.pathHash = $String(object.pathHash);
+                if (object.snapshotSha256 != null)
+                    if (typeof object.snapshotSha256 !== "string" || object.snapshotSha256.length)
+                        message.snapshotSha256 = $String(object.snapshotSha256);
+                if (object.fileVersion != null)
+                    if (typeof object.fileVersion !== "string" || object.fileVersion.length)
+                        message.fileVersion = $String(object.fileVersion);
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a FileBaselineMessage message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {proto.v1.FileBaselineMessage} message FileBaselineMessage
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            FileBaselineMessage.toObject = function (message, options, _depth) {
+                if (!options)
+                    options = {};
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let object = {};
+                if (options.defaults) {
+                    object.path = "";
+                    object.pathHash = "";
+                    object.snapshotSha256 = "";
+                    object.fileVersion = "";
+                }
+                if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
+                    object.path = message.path;
+                if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
+                    object.pathHash = message.pathHash;
+                if (message.snapshotSha256 != null && $Object.hasOwnProperty.call(message, "snapshotSha256"))
+                    object.snapshotSha256 = message.snapshotSha256;
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    object.fileVersion = message.fileVersion;
+                return object;
+            };
+
+            /**
+             * Converts this FileBaselineMessage to JSON.
+             * @function toJSON
+             * @memberof proto.v1.FileBaselineMessage
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            FileBaselineMessage.prototype.toJSON = function() {
+                return FileBaselineMessage.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the type url for FileBaselineMessage
+             * @function getTypeUrl
+             * @memberof proto.v1.FileBaselineMessage
+             * @static
+             * @param {string} [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns {string} The type url
+             */
+            FileBaselineMessage.getTypeUrl = function(prefix) {
+                if (prefix === $undefined)
+                    prefix = "type.googleapis.com";
+                return prefix + "/proto.v1.FileBaselineMessage";
+            };
+
+            return FileBaselineMessage;
+        })();
+
+        v1.FileUploadPrepareRequest = (function() {
+
+            /**
+             * Properties of a FileUploadPrepareRequest.
+             * @typedef {Object} proto.v1.FileUploadPrepareRequest.$Properties
+             * @property {string|null} [sessionId] FileUploadPrepareRequest sessionId
+             * @property {string|null} [sha256] FileUploadPrepareRequest sha256
+             * @property {string|null} [contentHash] FileUploadPrepareRequest contentHash
+             * @property {number|Long|null} [size] FileUploadPrepareRequest size
+             * @property {number|Long|null} [mtime] FileUploadPrepareRequest mtime
+             * @property {number|Long|null} [ctime] FileUploadPrepareRequest ctime
+             * @property {string|null} [context] FileUploadPrepareRequest context
+             * @property {string|null} [baseVersion] FileUploadPrepareRequest baseVersion
+             * @property {boolean|null} [versionGuard] FileUploadPrepareRequest versionGuard
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
+             */
+
+            /**
+             * Properties of a FileUploadPrepareRequest.
+             * @memberof proto.v1
+             * @interface IFileUploadPrepareRequest
+             * @augments proto.v1.FileUploadPrepareRequest.$Properties
+             * @deprecated Use proto.v1.FileUploadPrepareRequest.$Properties instead.
+             */
+
+            /**
+             * Shape of a FileUploadPrepareRequest.
+             * @typedef {proto.v1.FileUploadPrepareRequest.$Properties} proto.v1.FileUploadPrepareRequest.$Shape
+             */
+
+            /**
+             * Constructs a new FileUploadPrepareRequest.
+             * @memberof proto.v1
+             * @classdesc Represents a FileUploadPrepareRequest.
+             * @constructor
+             * @param {proto.v1.FileUploadPrepareRequest.$Properties=} [properties] Properties to set
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
+             */
+            const FileUploadPrepareRequest = function (properties) {
+                if (properties)
+                    for (let keys = $Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null && keys[i] !== "__proto__")
+                            this[keys[i]] = properties[keys[i]];
+            };
+
+            /**
+             * FileUploadPrepareRequest sessionId.
+             * @member {string} sessionId
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.sessionId = "";
+
+            /**
+             * FileUploadPrepareRequest sha256.
+             * @member {string} sha256
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.sha256 = "";
+
+            /**
+             * FileUploadPrepareRequest contentHash.
+             * @member {string} contentHash
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.contentHash = "";
+
+            /**
+             * FileUploadPrepareRequest size.
+             * @member {number|Long} size
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.size = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+
+            /**
+             * FileUploadPrepareRequest mtime.
+             * @member {number|Long} mtime
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.mtime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+
+            /**
+             * FileUploadPrepareRequest ctime.
+             * @member {number|Long} ctime
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.ctime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+
+            /**
+             * FileUploadPrepareRequest context.
+             * @member {string} context
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.context = "";
+
+            /**
+             * FileUploadPrepareRequest baseVersion.
+             * @member {string} baseVersion
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.baseVersion = "";
+
+            /**
+             * FileUploadPrepareRequest versionGuard.
+             * @member {boolean} versionGuard
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             */
+            FileUploadPrepareRequest.prototype.versionGuard = false;
+
+            /**
+             * Creates a new FileUploadPrepareRequest instance using the specified properties.
+             * @function create
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {proto.v1.FileUploadPrepareRequest.$Properties=} [properties] Properties to set
+             * @returns {proto.v1.FileUploadPrepareRequest} FileUploadPrepareRequest instance
+             * @type {{
+             *   (properties: proto.v1.FileUploadPrepareRequest.$Shape): proto.v1.FileUploadPrepareRequest & proto.v1.FileUploadPrepareRequest.$Shape;
+             *   (properties?: proto.v1.FileUploadPrepareRequest.$Properties): proto.v1.FileUploadPrepareRequest;
+             * }}
+             */
+            FileUploadPrepareRequest.create = function(properties) {
+                return new FileUploadPrepareRequest(properties);
+            };
+
+            /**
+             * Encodes the specified FileUploadPrepareRequest message. Does not implicitly {@link proto.v1.FileUploadPrepareRequest.verify|verify} messages.
+             * @function encode
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {proto.v1.FileUploadPrepareRequest.$Properties} message FileUploadPrepareRequest message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            FileUploadPrepareRequest.encode = function (message, writer, _depth) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId") && message.sessionId !== "")
+                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.sessionId);
+                if (message.sha256 != null && $Object.hasOwnProperty.call(message, "sha256") && message.sha256 !== "")
+                    writer.uint32(/* id 2, wireType 2 =*/18).string(message.sha256);
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
+                    writer.uint32(/* id 3, wireType 2 =*/26).string(message.contentHash);
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
+                    writer.uint32(/* id 4, wireType 0 =*/32).int64(message.size);
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime") && (typeof message.mtime === "object" ? message.mtime.low || message.mtime.high : message.mtime !== 0))
+                    writer.uint32(/* id 5, wireType 0 =*/40).int64(message.mtime);
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime") && (typeof message.ctime === "object" ? message.ctime.low || message.ctime.high : message.ctime !== 0))
+                    writer.uint32(/* id 6, wireType 0 =*/48).int64(message.ctime);
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
+                    writer.uint32(/* id 7, wireType 2 =*/58).string(message.context);
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion") && message.baseVersion !== "")
+                    writer.uint32(/* id 8, wireType 2 =*/66).string(message.baseVersion);
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard") && message.versionGuard !== false)
+                    writer.uint32(/* id 9, wireType 0 =*/72).bool(message.versionGuard);
+                if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
+                    for (let i = 0; i < message.$unknowns.length; ++i)
+                        writer.raw(message.$unknowns[i]);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified FileUploadPrepareRequest message, length delimited. Does not implicitly {@link proto.v1.FileUploadPrepareRequest.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {proto.v1.FileUploadPrepareRequest.$Properties} message FileUploadPrepareRequest message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            FileUploadPrepareRequest.encodeDelimited = function(message, writer) {
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
+            };
+
+            /**
+             * Decodes a FileUploadPrepareRequest message from the specified reader or buffer.
+             * @function decode
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {proto.v1.FileUploadPrepareRequest & proto.v1.FileUploadPrepareRequest.$Shape} FileUploadPrepareRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            FileUploadPrepareRequest.decode = function (reader, length, _end, _depth, _target) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $Reader.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let end = length === $undefined ? reader.len : reader.pos + length, message = _target || new $root.proto.v1.FileUploadPrepareRequest(), value;
+                while (reader.pos < end) {
+                    let start = reader.pos;
+                    let tag = reader.tag();
+                    if (tag === _end) {
+                        _end = $undefined;
+                        break;
+                    }
+                    let wireType = tag & 7;
+                    switch (tag >>>= 3) {
+                    case 1: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.sessionId = value;
+                            else
+                                delete message.sessionId;
+                            continue;
+                        }
+                    case 2: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.sha256 = value;
+                            else
+                                delete message.sha256;
+                            continue;
+                        }
+                    case 3: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.contentHash = value;
+                            else
+                                delete message.contentHash;
+                            continue;
+                        }
+                    case 4: {
+                            if (wireType !== 0)
+                                break;
+                            if (typeof (value = reader.int64()) === "object" ? value.low || value.high : value !== 0)
+                                message.size = value;
+                            else
+                                delete message.size;
+                            continue;
+                        }
+                    case 5: {
+                            if (wireType !== 0)
+                                break;
+                            if (typeof (value = reader.int64()) === "object" ? value.low || value.high : value !== 0)
+                                message.mtime = value;
+                            else
+                                delete message.mtime;
+                            continue;
+                        }
+                    case 6: {
+                            if (wireType !== 0)
+                                break;
+                            if (typeof (value = reader.int64()) === "object" ? value.low || value.high : value !== 0)
+                                message.ctime = value;
+                            else
+                                delete message.ctime;
+                            continue;
+                        }
+                    case 7: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.context = value;
+                            else
+                                delete message.context;
+                            continue;
+                        }
+                    case 8: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseVersion = value;
+                            else
+                                delete message.baseVersion;
+                            continue;
+                        }
+                    case 9: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.versionGuard = value;
+                            else
+                                delete message.versionGuard;
+                            continue;
+                        }
+                    }
+                    reader.skipType(wireType, _depth, tag);
+                    if (!reader.discardUnknown) {
+                        $util.makeProp(message, "$unknowns", false);
+                        (message.$unknowns || (message.$unknowns = [])).push(reader.raw(start, reader.pos));
+                    }
+                }
+                if (_end !== $undefined)
+                    throw $Error("missing end group");
+                return message;
+            };
+
+            /**
+             * Decodes a FileUploadPrepareRequest message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {proto.v1.FileUploadPrepareRequest & proto.v1.FileUploadPrepareRequest.$Shape} FileUploadPrepareRequest
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            FileUploadPrepareRequest.decodeDelimited = function(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a FileUploadPrepareRequest message.
+             * @function verify
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            FileUploadPrepareRequest.verify = function (message, _depth) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    return "max depth exceeded";
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                    if (!$util.isString(message.sessionId))
+                        return "sessionId: string expected";
+                if (message.sha256 != null && $Object.hasOwnProperty.call(message, "sha256"))
+                    if (!$util.isString(message.sha256))
+                        return "sha256: string expected";
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                    if (!$util.isString(message.contentHash))
+                        return "contentHash: string expected";
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                    if (!$util.isInteger(message.size) && !(message.size && $util.isInteger(message.size.low) && $util.isInteger(message.size.high)))
+                        return "size: integer|Long expected";
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                    if (!$util.isInteger(message.mtime) && !(message.mtime && $util.isInteger(message.mtime.low) && $util.isInteger(message.mtime.high)))
+                        return "mtime: integer|Long expected";
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                    if (!$util.isInteger(message.ctime) && !(message.ctime && $util.isInteger(message.ctime.low) && $util.isInteger(message.ctime.high)))
+                        return "ctime: integer|Long expected";
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    if (!$util.isString(message.context))
+                        return "context: string expected";
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    if (!$util.isString(message.baseVersion))
+                        return "baseVersion: string expected";
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    if (typeof message.versionGuard !== "boolean")
+                        return "versionGuard: boolean expected";
+                return null;
+            };
+
+            /**
+             * Creates a FileUploadPrepareRequest message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {proto.v1.FileUploadPrepareRequest} FileUploadPrepareRequest
+             */
+            FileUploadPrepareRequest.fromObject = function (object, _depth) {
+                if (object instanceof $root.proto.v1.FileUploadPrepareRequest)
+                    return object;
+                if (!$util.isObject(object))
+                    throw $TypeError(".proto.v1.FileUploadPrepareRequest: object expected");
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let message = new $root.proto.v1.FileUploadPrepareRequest();
+                if (object.sessionId != null)
+                    if (typeof object.sessionId !== "string" || object.sessionId.length)
+                        message.sessionId = $String(object.sessionId);
+                if (object.sha256 != null)
+                    if (typeof object.sha256 !== "string" || object.sha256.length)
+                        message.sha256 = $String(object.sha256);
+                if (object.contentHash != null)
+                    if (typeof object.contentHash !== "string" || object.contentHash.length)
+                        message.contentHash = $String(object.contentHash);
+                if (object.size != null)
+                    if (typeof object.size === "object" ? object.size.low || object.size.high : $Number(object.size) !== 0)
+                        if ($util.Long)
+                            message.size = $util.Long.fromValue(object.size, false);
+                        else if (typeof object.size === "string")
+                            message.size = $parseInt(object.size, 10);
+                        else if (typeof object.size === "number")
+                            message.size = object.size;
+                        else if (typeof object.size === "object")
+                            message.size = new $util.LongBits(object.size.low >>> 0, object.size.high >>> 0).toNumber();
+                if (object.mtime != null)
+                    if (typeof object.mtime === "object" ? object.mtime.low || object.mtime.high : $Number(object.mtime) !== 0)
+                        if ($util.Long)
+                            message.mtime = $util.Long.fromValue(object.mtime, false);
+                        else if (typeof object.mtime === "string")
+                            message.mtime = $parseInt(object.mtime, 10);
+                        else if (typeof object.mtime === "number")
+                            message.mtime = object.mtime;
+                        else if (typeof object.mtime === "object")
+                            message.mtime = new $util.LongBits(object.mtime.low >>> 0, object.mtime.high >>> 0).toNumber();
+                if (object.ctime != null)
+                    if (typeof object.ctime === "object" ? object.ctime.low || object.ctime.high : $Number(object.ctime) !== 0)
+                        if ($util.Long)
+                            message.ctime = $util.Long.fromValue(object.ctime, false);
+                        else if (typeof object.ctime === "string")
+                            message.ctime = $parseInt(object.ctime, 10);
+                        else if (typeof object.ctime === "number")
+                            message.ctime = object.ctime;
+                        else if (typeof object.ctime === "object")
+                            message.ctime = new $util.LongBits(object.ctime.low >>> 0, object.ctime.high >>> 0).toNumber();
+                if (object.context != null)
+                    if (typeof object.context !== "string" || object.context.length)
+                        message.context = $String(object.context);
+                if (object.baseVersion != null)
+                    if (typeof object.baseVersion !== "string" || object.baseVersion.length)
+                        message.baseVersion = $String(object.baseVersion);
+                if (object.versionGuard != null)
+                    if (object.versionGuard)
+                        message.versionGuard = $Boolean(object.versionGuard);
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a FileUploadPrepareRequest message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {proto.v1.FileUploadPrepareRequest} message FileUploadPrepareRequest
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            FileUploadPrepareRequest.toObject = function (message, options, _depth) {
+                if (!options)
+                    options = {};
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let object = {};
+                if (options.defaults) {
+                    object.sessionId = "";
+                    object.sha256 = "";
+                    object.contentHash = "";
+                    if ($util.Long) {
+                        let long = new $util.Long(0, 0, false);
+                        object.size = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
+                    } else
+                        object.size = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    if ($util.Long) {
+                        let long = new $util.Long(0, 0, false);
+                        object.mtime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
+                    } else
+                        object.mtime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    if ($util.Long) {
+                        let long = new $util.Long(0, 0, false);
+                        object.ctime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
+                    } else
+                        object.ctime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.context = "";
+                    object.baseVersion = "";
+                    object.versionGuard = false;
+                }
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                    object.sessionId = message.sessionId;
+                if (message.sha256 != null && $Object.hasOwnProperty.call(message, "sha256"))
+                    object.sha256 = message.sha256;
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                    object.contentHash = message.contentHash;
+                if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
+                    if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
+                        object.size = typeof message.size === "number" ? $BigInt(message.size) : $util.Long.fromBits(message.size.low >>> 0, message.size.high >>> 0, false).toBigInt();
+                    else if (typeof message.size === "number")
+                        object.size = options.longs === $String ? $String(message.size) : message.size;
+                    else
+                        object.size = options.longs === $String ? $util.Long.prototype.toString.call(message.size) : options.longs === $Number ? new $util.LongBits(message.size.low >>> 0, message.size.high >>> 0).toNumber() : message.size;
+                if (message.mtime != null && $Object.hasOwnProperty.call(message, "mtime"))
+                    if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
+                        object.mtime = typeof message.mtime === "number" ? $BigInt(message.mtime) : $util.Long.fromBits(message.mtime.low >>> 0, message.mtime.high >>> 0, false).toBigInt();
+                    else if (typeof message.mtime === "number")
+                        object.mtime = options.longs === $String ? $String(message.mtime) : message.mtime;
+                    else
+                        object.mtime = options.longs === $String ? $util.Long.prototype.toString.call(message.mtime) : options.longs === $Number ? new $util.LongBits(message.mtime.low >>> 0, message.mtime.high >>> 0).toNumber() : message.mtime;
+                if (message.ctime != null && $Object.hasOwnProperty.call(message, "ctime"))
+                    if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
+                        object.ctime = typeof message.ctime === "number" ? $BigInt(message.ctime) : $util.Long.fromBits(message.ctime.low >>> 0, message.ctime.high >>> 0, false).toBigInt();
+                    else if (typeof message.ctime === "number")
+                        object.ctime = options.longs === $String ? $String(message.ctime) : message.ctime;
+                    else
+                        object.ctime = options.longs === $String ? $util.Long.prototype.toString.call(message.ctime) : options.longs === $Number ? new $util.LongBits(message.ctime.low >>> 0, message.ctime.high >>> 0).toNumber() : message.ctime;
+                if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
+                    object.context = message.context;
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    object.baseVersion = message.baseVersion;
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    object.versionGuard = message.versionGuard;
+                return object;
+            };
+
+            /**
+             * Converts this FileUploadPrepareRequest to JSON.
+             * @function toJSON
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            FileUploadPrepareRequest.prototype.toJSON = function() {
+                return FileUploadPrepareRequest.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the type url for FileUploadPrepareRequest
+             * @function getTypeUrl
+             * @memberof proto.v1.FileUploadPrepareRequest
+             * @static
+             * @param {string} [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns {string} The type url
+             */
+            FileUploadPrepareRequest.getTypeUrl = function(prefix) {
+                if (prefix === $undefined)
+                    prefix = "type.googleapis.com";
+                return prefix + "/proto.v1.FileUploadPrepareRequest";
+            };
+
+            return FileUploadPrepareRequest;
+        })();
+
+        v1.FileUploadReadyMessage = (function() {
+
+            /**
+             * Properties of a FileUploadReadyMessage.
+             * @typedef {Object} proto.v1.FileUploadReadyMessage.$Properties
+             * @property {string|null} [sessionId] FileUploadReadyMessage sessionId
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
+             */
+
+            /**
+             * Properties of a FileUploadReadyMessage.
+             * @memberof proto.v1
+             * @interface IFileUploadReadyMessage
+             * @augments proto.v1.FileUploadReadyMessage.$Properties
+             * @deprecated Use proto.v1.FileUploadReadyMessage.$Properties instead.
+             */
+
+            /**
+             * Shape of a FileUploadReadyMessage.
+             * @typedef {proto.v1.FileUploadReadyMessage.$Properties} proto.v1.FileUploadReadyMessage.$Shape
+             */
+
+            /**
+             * Constructs a new FileUploadReadyMessage.
+             * @memberof proto.v1
+             * @classdesc Represents a FileUploadReadyMessage.
+             * @constructor
+             * @param {proto.v1.FileUploadReadyMessage.$Properties=} [properties] Properties to set
+             * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
+             */
+            const FileUploadReadyMessage = function (properties) {
+                if (properties)
+                    for (let keys = $Object.keys(properties), i = 0; i < keys.length; ++i)
+                        if (properties[keys[i]] != null && keys[i] !== "__proto__")
+                            this[keys[i]] = properties[keys[i]];
+            };
+
+            /**
+             * FileUploadReadyMessage sessionId.
+             * @member {string} sessionId
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @instance
+             */
+            FileUploadReadyMessage.prototype.sessionId = "";
+
+            /**
+             * Creates a new FileUploadReadyMessage instance using the specified properties.
+             * @function create
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {proto.v1.FileUploadReadyMessage.$Properties=} [properties] Properties to set
+             * @returns {proto.v1.FileUploadReadyMessage} FileUploadReadyMessage instance
+             * @type {{
+             *   (properties: proto.v1.FileUploadReadyMessage.$Shape): proto.v1.FileUploadReadyMessage & proto.v1.FileUploadReadyMessage.$Shape;
+             *   (properties?: proto.v1.FileUploadReadyMessage.$Properties): proto.v1.FileUploadReadyMessage;
+             * }}
+             */
+            FileUploadReadyMessage.create = function(properties) {
+                return new FileUploadReadyMessage(properties);
+            };
+
+            /**
+             * Encodes the specified FileUploadReadyMessage message. Does not implicitly {@link proto.v1.FileUploadReadyMessage.verify|verify} messages.
+             * @function encode
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {proto.v1.FileUploadReadyMessage.$Properties} message FileUploadReadyMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            FileUploadReadyMessage.encode = function (message, writer, _depth) {
+                if (!writer)
+                    writer = $Writer.create();
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId") && message.sessionId !== "")
+                    writer.uint32(/* id 1, wireType 2 =*/10).string(message.sessionId);
+                if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
+                    for (let i = 0; i < message.$unknowns.length; ++i)
+                        writer.raw(message.$unknowns[i]);
+                return writer;
+            };
+
+            /**
+             * Encodes the specified FileUploadReadyMessage message, length delimited. Does not implicitly {@link proto.v1.FileUploadReadyMessage.verify|verify} messages.
+             * @function encodeDelimited
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {proto.v1.FileUploadReadyMessage.$Properties} message FileUploadReadyMessage message or plain object to encode
+             * @param {$protobuf.Writer} [writer] Writer to encode to
+             * @returns {$protobuf.Writer} Writer
+             */
+            FileUploadReadyMessage.encodeDelimited = function(message, writer) {
+                return this.encode(message, (writer || $Writer.create()).fork()).ldelim();
+            };
+
+            /**
+             * Decodes a FileUploadReadyMessage message from the specified reader or buffer.
+             * @function decode
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @param {number} [length] Message length if known beforehand
+             * @returns {proto.v1.FileUploadReadyMessage & proto.v1.FileUploadReadyMessage.$Shape} FileUploadReadyMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            FileUploadReadyMessage.decode = function (reader, length, _end, _depth, _target) {
+                if (!(reader instanceof $Reader))
+                    reader = $Reader.create(reader);
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $Reader.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let end = length === $undefined ? reader.len : reader.pos + length, message = _target || new $root.proto.v1.FileUploadReadyMessage(), value;
+                while (reader.pos < end) {
+                    let start = reader.pos;
+                    let tag = reader.tag();
+                    if (tag === _end) {
+                        _end = $undefined;
+                        break;
+                    }
+                    let wireType = tag & 7;
+                    switch (tag >>>= 3) {
+                    case 1: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.sessionId = value;
+                            else
+                                delete message.sessionId;
+                            continue;
+                        }
+                    }
+                    reader.skipType(wireType, _depth, tag);
+                    if (!reader.discardUnknown) {
+                        $util.makeProp(message, "$unknowns", false);
+                        (message.$unknowns || (message.$unknowns = [])).push(reader.raw(start, reader.pos));
+                    }
+                }
+                if (_end !== $undefined)
+                    throw $Error("missing end group");
+                return message;
+            };
+
+            /**
+             * Decodes a FileUploadReadyMessage message from the specified reader or buffer, length delimited.
+             * @function decodeDelimited
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {$protobuf.Reader|Uint8Array} reader Reader or buffer to decode from
+             * @returns {proto.v1.FileUploadReadyMessage & proto.v1.FileUploadReadyMessage.$Shape} FileUploadReadyMessage
+             * @throws {Error} If the payload is not a reader or valid buffer
+             * @throws {$protobuf.util.ProtocolError} If required fields are missing
+             */
+            FileUploadReadyMessage.decodeDelimited = function(reader) {
+                if (!(reader instanceof $Reader))
+                    reader = new $Reader(reader);
+                return this.decode(reader, reader.uint32());
+            };
+
+            /**
+             * Verifies a FileUploadReadyMessage message.
+             * @function verify
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {Object.<string,*>} message Plain object to verify
+             * @returns {string|null} `null` if valid, otherwise the reason why it is not
+             */
+            FileUploadReadyMessage.verify = function (message, _depth) {
+                if (typeof message !== "object" || message === null)
+                    return "object expected";
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    return "max depth exceeded";
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                    if (!$util.isString(message.sessionId))
+                        return "sessionId: string expected";
+                return null;
+            };
+
+            /**
+             * Creates a FileUploadReadyMessage message from a plain object. Also converts values to their respective internal types.
+             * @function fromObject
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {Object.<string,*>} object Plain object
+             * @returns {proto.v1.FileUploadReadyMessage} FileUploadReadyMessage
+             */
+            FileUploadReadyMessage.fromObject = function (object, _depth) {
+                if (object instanceof $root.proto.v1.FileUploadReadyMessage)
+                    return object;
+                if (!$util.isObject(object))
+                    throw $TypeError(".proto.v1.FileUploadReadyMessage: object expected");
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let message = new $root.proto.v1.FileUploadReadyMessage();
+                if (object.sessionId != null)
+                    if (typeof object.sessionId !== "string" || object.sessionId.length)
+                        message.sessionId = $String(object.sessionId);
+                return message;
+            };
+
+            /**
+             * Creates a plain object from a FileUploadReadyMessage message. Also converts values to other types if specified.
+             * @function toObject
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {proto.v1.FileUploadReadyMessage} message FileUploadReadyMessage
+             * @param {$protobuf.IConversionOptions} [options] Conversion options
+             * @returns {Object.<string,*>} Plain object
+             */
+            FileUploadReadyMessage.toObject = function (message, options, _depth) {
+                if (!options)
+                    options = {};
+                if (_depth === $undefined)
+                    _depth = 0;
+                if (_depth > $util.recursionLimit)
+                    throw $Error("max depth exceeded");
+                let object = {};
+                if (options.defaults)
+                    object.sessionId = "";
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                    object.sessionId = message.sessionId;
+                return object;
+            };
+
+            /**
+             * Converts this FileUploadReadyMessage to JSON.
+             * @function toJSON
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @instance
+             * @returns {Object.<string,*>} JSON object
+             */
+            FileUploadReadyMessage.prototype.toJSON = function() {
+                return FileUploadReadyMessage.toObject(this, $protobuf.util.toJSONOptions);
+            };
+
+            /**
+             * Gets the type url for FileUploadReadyMessage
+             * @function getTypeUrl
+             * @memberof proto.v1.FileUploadReadyMessage
+             * @static
+             * @param {string} [prefix] Custom type url prefix, defaults to `"type.googleapis.com"`
+             * @returns {string} The type url
+             */
+            FileUploadReadyMessage.getTypeUrl = function(prefix) {
+                if (prefix === $undefined)
+                    prefix = "type.googleapis.com";
+                return prefix + "/proto.v1.FileUploadReadyMessage";
+            };
+
+            return FileUploadReadyMessage;
+        })();
+
         v1.FileDeleteRequest = (function() {
 
             /**
@@ -11414,6 +13595,11 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [path] FileDeleteRequest path
              * @property {string|null} [pathHash] FileDeleteRequest pathHash
              * @property {string|null} [context] FileDeleteRequest context
+             * @property {string|null} [baseSha256] FileDeleteRequest baseSha256
+             * @property {boolean|null} [baseHashMissing] FileDeleteRequest baseHashMissing
+             * @property {string|null} [operationId] FileDeleteRequest operationId
+             * @property {string|null} [baseVersion] FileDeleteRequest baseVersion
+             * @property {boolean|null} [versionGuard] FileDeleteRequest versionGuard
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -11478,6 +13664,46 @@ export const proto = $root.proto = (() => {
             FileDeleteRequest.prototype.context = "";
 
             /**
+             * FileDeleteRequest baseSha256.
+             * @member {string} baseSha256
+             * @memberof proto.v1.FileDeleteRequest
+             * @instance
+             */
+            FileDeleteRequest.prototype.baseSha256 = "";
+
+            /**
+             * FileDeleteRequest baseHashMissing.
+             * @member {boolean} baseHashMissing
+             * @memberof proto.v1.FileDeleteRequest
+             * @instance
+             */
+            FileDeleteRequest.prototype.baseHashMissing = false;
+
+            /**
+             * FileDeleteRequest operationId.
+             * @member {string} operationId
+             * @memberof proto.v1.FileDeleteRequest
+             * @instance
+             */
+            FileDeleteRequest.prototype.operationId = "";
+
+            /**
+             * FileDeleteRequest baseVersion.
+             * @member {string} baseVersion
+             * @memberof proto.v1.FileDeleteRequest
+             * @instance
+             */
+            FileDeleteRequest.prototype.baseVersion = "";
+
+            /**
+             * FileDeleteRequest versionGuard.
+             * @member {boolean} versionGuard
+             * @memberof proto.v1.FileDeleteRequest
+             * @instance
+             */
+            FileDeleteRequest.prototype.versionGuard = false;
+
+            /**
              * Creates a new FileDeleteRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileDeleteRequest
@@ -11517,6 +13743,16 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 4, wireType 2 =*/34).string(message.context);
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256") && message.baseSha256 !== "")
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.baseSha256);
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing") && message.baseHashMissing !== false)
+                    writer.uint32(/* id 6, wireType 0 =*/48).bool(message.baseHashMissing);
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId") && message.operationId !== "")
+                    writer.uint32(/* id 7, wireType 2 =*/58).string(message.operationId);
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion") && message.baseVersion !== "")
+                    writer.uint32(/* id 8, wireType 2 =*/66).string(message.baseVersion);
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard") && message.versionGuard !== false)
+                    writer.uint32(/* id 9, wireType 0 =*/72).bool(message.versionGuard);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -11600,6 +13836,51 @@ export const proto = $root.proto = (() => {
                                 delete message.context;
                             continue;
                         }
+                    case 5: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseSha256 = value;
+                            else
+                                delete message.baseSha256;
+                            continue;
+                        }
+                    case 6: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.baseHashMissing = value;
+                            else
+                                delete message.baseHashMissing;
+                            continue;
+                        }
+                    case 7: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.operationId = value;
+                            else
+                                delete message.operationId;
+                            continue;
+                        }
+                    case 8: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseVersion = value;
+                            else
+                                delete message.baseVersion;
+                            continue;
+                        }
+                    case 9: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.versionGuard = value;
+                            else
+                                delete message.versionGuard;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -11655,6 +13936,21 @@ export const proto = $root.proto = (() => {
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
                     if (!$util.isString(message.context))
                         return "context: string expected";
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    if (!$util.isString(message.baseSha256))
+                        return "baseSha256: string expected";
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    if (typeof message.baseHashMissing !== "boolean")
+                        return "baseHashMissing: boolean expected";
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId"))
+                    if (!$util.isString(message.operationId))
+                        return "operationId: string expected";
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    if (!$util.isString(message.baseVersion))
+                        return "baseVersion: string expected";
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    if (typeof message.versionGuard !== "boolean")
+                        return "versionGuard: boolean expected";
                 return null;
             };
 
@@ -11688,6 +13984,21 @@ export const proto = $root.proto = (() => {
                 if (object.context != null)
                     if (typeof object.context !== "string" || object.context.length)
                         message.context = $String(object.context);
+                if (object.baseSha256 != null)
+                    if (typeof object.baseSha256 !== "string" || object.baseSha256.length)
+                        message.baseSha256 = $String(object.baseSha256);
+                if (object.baseHashMissing != null)
+                    if (object.baseHashMissing)
+                        message.baseHashMissing = $Boolean(object.baseHashMissing);
+                if (object.operationId != null)
+                    if (typeof object.operationId !== "string" || object.operationId.length)
+                        message.operationId = $String(object.operationId);
+                if (object.baseVersion != null)
+                    if (typeof object.baseVersion !== "string" || object.baseVersion.length)
+                        message.baseVersion = $String(object.baseVersion);
+                if (object.versionGuard != null)
+                    if (object.versionGuard)
+                        message.versionGuard = $Boolean(object.versionGuard);
                 return message;
             };
 
@@ -11713,6 +14024,11 @@ export const proto = $root.proto = (() => {
                     object.path = "";
                     object.pathHash = "";
                     object.context = "";
+                    object.baseSha256 = "";
+                    object.baseHashMissing = false;
+                    object.operationId = "";
+                    object.baseVersion = "";
+                    object.versionGuard = false;
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -11722,6 +14038,16 @@ export const proto = $root.proto = (() => {
                     object.pathHash = message.pathHash;
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
                     object.context = message.context;
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    object.baseSha256 = message.baseSha256;
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    object.baseHashMissing = message.baseHashMissing;
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId"))
+                    object.operationId = message.operationId;
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    object.baseVersion = message.baseVersion;
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    object.versionGuard = message.versionGuard;
                 return object;
             };
 
@@ -11764,6 +14090,11 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [oldPath] FileRenameRequest oldPath
              * @property {string|null} [oldPathHash] FileRenameRequest oldPathHash
              * @property {string|null} [context] FileRenameRequest context
+             * @property {string|null} [baseSha256] FileRenameRequest baseSha256
+             * @property {boolean|null} [baseHashMissing] FileRenameRequest baseHashMissing
+             * @property {string|null} [operationId] FileRenameRequest operationId
+             * @property {string|null} [baseVersion] FileRenameRequest baseVersion
+             * @property {boolean|null} [versionGuard] FileRenameRequest versionGuard
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -11844,6 +14175,46 @@ export const proto = $root.proto = (() => {
             FileRenameRequest.prototype.context = "";
 
             /**
+             * FileRenameRequest baseSha256.
+             * @member {string} baseSha256
+             * @memberof proto.v1.FileRenameRequest
+             * @instance
+             */
+            FileRenameRequest.prototype.baseSha256 = "";
+
+            /**
+             * FileRenameRequest baseHashMissing.
+             * @member {boolean} baseHashMissing
+             * @memberof proto.v1.FileRenameRequest
+             * @instance
+             */
+            FileRenameRequest.prototype.baseHashMissing = false;
+
+            /**
+             * FileRenameRequest operationId.
+             * @member {string} operationId
+             * @memberof proto.v1.FileRenameRequest
+             * @instance
+             */
+            FileRenameRequest.prototype.operationId = "";
+
+            /**
+             * FileRenameRequest baseVersion.
+             * @member {string} baseVersion
+             * @memberof proto.v1.FileRenameRequest
+             * @instance
+             */
+            FileRenameRequest.prototype.baseVersion = "";
+
+            /**
+             * FileRenameRequest versionGuard.
+             * @member {boolean} versionGuard
+             * @memberof proto.v1.FileRenameRequest
+             * @instance
+             */
+            FileRenameRequest.prototype.versionGuard = false;
+
+            /**
              * Creates a new FileRenameRequest instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileRenameRequest
@@ -11887,6 +14258,16 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 5, wireType 2 =*/42).string(message.oldPathHash);
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context") && message.context !== "")
                     writer.uint32(/* id 6, wireType 2 =*/50).string(message.context);
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256") && message.baseSha256 !== "")
+                    writer.uint32(/* id 7, wireType 2 =*/58).string(message.baseSha256);
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing") && message.baseHashMissing !== false)
+                    writer.uint32(/* id 8, wireType 0 =*/64).bool(message.baseHashMissing);
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId") && message.operationId !== "")
+                    writer.uint32(/* id 9, wireType 2 =*/74).string(message.operationId);
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion") && message.baseVersion !== "")
+                    writer.uint32(/* id 10, wireType 2 =*/82).string(message.baseVersion);
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard") && message.versionGuard !== false)
+                    writer.uint32(/* id 11, wireType 0 =*/88).bool(message.versionGuard);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -11988,6 +14369,51 @@ export const proto = $root.proto = (() => {
                                 delete message.context;
                             continue;
                         }
+                    case 7: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseSha256 = value;
+                            else
+                                delete message.baseSha256;
+                            continue;
+                        }
+                    case 8: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.baseHashMissing = value;
+                            else
+                                delete message.baseHashMissing;
+                            continue;
+                        }
+                    case 9: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.operationId = value;
+                            else
+                                delete message.operationId;
+                            continue;
+                        }
+                    case 10: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseVersion = value;
+                            else
+                                delete message.baseVersion;
+                            continue;
+                        }
+                    case 11: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.versionGuard = value;
+                            else
+                                delete message.versionGuard;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -12049,6 +14475,21 @@ export const proto = $root.proto = (() => {
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
                     if (!$util.isString(message.context))
                         return "context: string expected";
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    if (!$util.isString(message.baseSha256))
+                        return "baseSha256: string expected";
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    if (typeof message.baseHashMissing !== "boolean")
+                        return "baseHashMissing: boolean expected";
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId"))
+                    if (!$util.isString(message.operationId))
+                        return "operationId: string expected";
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    if (!$util.isString(message.baseVersion))
+                        return "baseVersion: string expected";
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    if (typeof message.versionGuard !== "boolean")
+                        return "versionGuard: boolean expected";
                 return null;
             };
 
@@ -12088,6 +14529,21 @@ export const proto = $root.proto = (() => {
                 if (object.context != null)
                     if (typeof object.context !== "string" || object.context.length)
                         message.context = $String(object.context);
+                if (object.baseSha256 != null)
+                    if (typeof object.baseSha256 !== "string" || object.baseSha256.length)
+                        message.baseSha256 = $String(object.baseSha256);
+                if (object.baseHashMissing != null)
+                    if (object.baseHashMissing)
+                        message.baseHashMissing = $Boolean(object.baseHashMissing);
+                if (object.operationId != null)
+                    if (typeof object.operationId !== "string" || object.operationId.length)
+                        message.operationId = $String(object.operationId);
+                if (object.baseVersion != null)
+                    if (typeof object.baseVersion !== "string" || object.baseVersion.length)
+                        message.baseVersion = $String(object.baseVersion);
+                if (object.versionGuard != null)
+                    if (object.versionGuard)
+                        message.versionGuard = $Boolean(object.versionGuard);
                 return message;
             };
 
@@ -12115,6 +14571,11 @@ export const proto = $root.proto = (() => {
                     object.oldPath = "";
                     object.oldPathHash = "";
                     object.context = "";
+                    object.baseSha256 = "";
+                    object.baseHashMissing = false;
+                    object.operationId = "";
+                    object.baseVersion = "";
+                    object.versionGuard = false;
                 }
                 if (message.vault != null && $Object.hasOwnProperty.call(message, "vault"))
                     object.vault = message.vault;
@@ -12128,6 +14589,16 @@ export const proto = $root.proto = (() => {
                     object.oldPathHash = message.oldPathHash;
                 if (message.context != null && $Object.hasOwnProperty.call(message, "context"))
                     object.context = message.context;
+                if (message.baseSha256 != null && $Object.hasOwnProperty.call(message, "baseSha256"))
+                    object.baseSha256 = message.baseSha256;
+                if (message.baseHashMissing != null && $Object.hasOwnProperty.call(message, "baseHashMissing"))
+                    object.baseHashMissing = message.baseHashMissing;
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId"))
+                    object.operationId = message.operationId;
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    object.baseVersion = message.baseVersion;
+                if (message.versionGuard != null && $Object.hasOwnProperty.call(message, "versionGuard"))
+                    object.versionGuard = message.versionGuard;
                 return object;
             };
 
@@ -12970,6 +15441,7 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [ctime] FileSyncModifyMessage ctime
              * @property {number|Long|null} [mtime] FileSyncModifyMessage mtime
              * @property {number|Long|null} [lastTime] FileSyncModifyMessage lastTime
+             * @property {string|null} [fileVersion] FileSyncModifyMessage fileVersion
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -13058,6 +15530,14 @@ export const proto = $root.proto = (() => {
             FileSyncModifyMessage.prototype.lastTime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * FileSyncModifyMessage fileVersion.
+             * @member {string} fileVersion
+             * @memberof proto.v1.FileSyncModifyMessage
+             * @instance
+             */
+            FileSyncModifyMessage.prototype.fileVersion = "";
+
+            /**
              * Creates a new FileSyncModifyMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileSyncModifyMessage
@@ -13103,6 +15583,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.mtime);
                 if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.lastTime);
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion") && message.fileVersion !== "")
+                    writer.uint32(/* id 8, wireType 2 =*/66).string(message.fileVersion);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -13213,6 +15695,15 @@ export const proto = $root.proto = (() => {
                                 delete message.lastTime;
                             continue;
                         }
+                    case 8: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.fileVersion = value;
+                            else
+                                delete message.fileVersion;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -13277,6 +15768,9 @@ export const proto = $root.proto = (() => {
                 if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
                     if (!$util.isInteger(message.lastTime) && !(message.lastTime && $util.isInteger(message.lastTime.low) && $util.isInteger(message.lastTime.high)))
                         return "lastTime: integer|Long expected";
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    if (!$util.isString(message.fileVersion))
+                        return "fileVersion: string expected";
                 return null;
             };
 
@@ -13347,6 +15841,9 @@ export const proto = $root.proto = (() => {
                             message.lastTime = object.lastTime;
                         else if (typeof object.lastTime === "object")
                             message.lastTime = new $util.LongBits(object.lastTime.low >>> 0, object.lastTime.high >>> 0).toNumber();
+                if (object.fileVersion != null)
+                    if (typeof object.fileVersion !== "string" || object.fileVersion.length)
+                        message.fileVersion = $String(object.fileVersion);
                 return message;
             };
 
@@ -13391,6 +15888,7 @@ export const proto = $root.proto = (() => {
                         object.lastTime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
                     } else
                         object.lastTime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.fileVersion = "";
                 }
                 if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
                     object.path = message.path;
@@ -13426,6 +15924,8 @@ export const proto = $root.proto = (() => {
                         object.lastTime = options.longs === $String ? $String(message.lastTime) : message.lastTime;
                     else
                         object.lastTime = options.longs === $String ? $util.Long.prototype.toString.call(message.lastTime) : options.longs === $Number ? new $util.LongBits(message.lastTime.low >>> 0, message.lastTime.high >>> 0).toNumber() : message.lastTime;
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    object.fileVersion = message.fileVersion;
                 return object;
             };
 
@@ -13468,6 +15968,7 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [mtime] FileSyncDeleteMessage mtime
              * @property {number|Long|null} [size] FileSyncDeleteMessage size
              * @property {number|Long|null} [lastTime] FileSyncDeleteMessage lastTime
+             * @property {string|null} [previousVersion] FileSyncDeleteMessage previousVersion
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -13548,6 +16049,14 @@ export const proto = $root.proto = (() => {
             FileSyncDeleteMessage.prototype.lastTime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * FileSyncDeleteMessage previousVersion.
+             * @member {string} previousVersion
+             * @memberof proto.v1.FileSyncDeleteMessage
+             * @instance
+             */
+            FileSyncDeleteMessage.prototype.previousVersion = "";
+
+            /**
              * Creates a new FileSyncDeleteMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileSyncDeleteMessage
@@ -13591,6 +16100,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 5, wireType 0 =*/40).int64(message.size);
                 if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime") && (typeof message.lastTime === "object" ? message.lastTime.low || message.lastTime.high : message.lastTime !== 0))
                     writer.uint32(/* id 6, wireType 0 =*/48).int64(message.lastTime);
+                if (message.previousVersion != null && $Object.hasOwnProperty.call(message, "previousVersion") && message.previousVersion !== "")
+                    writer.uint32(/* id 7, wireType 2 =*/58).string(message.previousVersion);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -13692,6 +16203,15 @@ export const proto = $root.proto = (() => {
                                 delete message.lastTime;
                             continue;
                         }
+                    case 7: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.previousVersion = value;
+                            else
+                                delete message.previousVersion;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -13753,6 +16273,9 @@ export const proto = $root.proto = (() => {
                 if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
                     if (!$util.isInteger(message.lastTime) && !(message.lastTime && $util.isInteger(message.lastTime.low) && $util.isInteger(message.lastTime.high)))
                         return "lastTime: integer|Long expected";
+                if (message.previousVersion != null && $Object.hasOwnProperty.call(message, "previousVersion"))
+                    if (!$util.isString(message.previousVersion))
+                        return "previousVersion: string expected";
                 return null;
             };
 
@@ -13820,6 +16343,9 @@ export const proto = $root.proto = (() => {
                             message.lastTime = object.lastTime;
                         else if (typeof object.lastTime === "object")
                             message.lastTime = new $util.LongBits(object.lastTime.low >>> 0, object.lastTime.high >>> 0).toNumber();
+                if (object.previousVersion != null)
+                    if (typeof object.previousVersion !== "string" || object.previousVersion.length)
+                        message.previousVersion = $String(object.previousVersion);
                 return message;
             };
 
@@ -13863,6 +16389,7 @@ export const proto = $root.proto = (() => {
                         object.lastTime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
                     } else
                         object.lastTime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.previousVersion = "";
                 }
                 if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
                     object.path = message.path;
@@ -13896,6 +16423,8 @@ export const proto = $root.proto = (() => {
                         object.lastTime = options.longs === $String ? $String(message.lastTime) : message.lastTime;
                     else
                         object.lastTime = options.longs === $String ? $util.Long.prototype.toString.call(message.lastTime) : options.longs === $Number ? new $util.LongBits(message.lastTime.low >>> 0, message.lastTime.high >>> 0).toNumber() : message.lastTime;
+                if (message.previousVersion != null && $Object.hasOwnProperty.call(message, "previousVersion"))
+                    object.previousVersion = message.previousVersion;
                 return object;
             };
 
@@ -13941,6 +16470,8 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [lastTime] FileSyncRenameMessage lastTime
              * @property {string|null} [oldPath] FileSyncRenameMessage oldPath
              * @property {string|null} [oldPathHash] FileSyncRenameMessage oldPathHash
+             * @property {string|null} [fileVersion] FileSyncRenameMessage fileVersion
+             * @property {string|null} [previousVersion] FileSyncRenameMessage previousVersion
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -14045,6 +16576,22 @@ export const proto = $root.proto = (() => {
             FileSyncRenameMessage.prototype.oldPathHash = "";
 
             /**
+             * FileSyncRenameMessage fileVersion.
+             * @member {string} fileVersion
+             * @memberof proto.v1.FileSyncRenameMessage
+             * @instance
+             */
+            FileSyncRenameMessage.prototype.fileVersion = "";
+
+            /**
+             * FileSyncRenameMessage previousVersion.
+             * @member {string} previousVersion
+             * @memberof proto.v1.FileSyncRenameMessage
+             * @instance
+             */
+            FileSyncRenameMessage.prototype.previousVersion = "";
+
+            /**
              * Creates a new FileSyncRenameMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileSyncRenameMessage
@@ -14094,6 +16641,10 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 8, wireType 2 =*/66).string(message.oldPath);
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash") && message.oldPathHash !== "")
                     writer.uint32(/* id 9, wireType 2 =*/74).string(message.oldPathHash);
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion") && message.fileVersion !== "")
+                    writer.uint32(/* id 10, wireType 2 =*/82).string(message.fileVersion);
+                if (message.previousVersion != null && $Object.hasOwnProperty.call(message, "previousVersion") && message.previousVersion !== "")
+                    writer.uint32(/* id 11, wireType 2 =*/90).string(message.previousVersion);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -14222,6 +16773,24 @@ export const proto = $root.proto = (() => {
                                 delete message.oldPathHash;
                             continue;
                         }
+                    case 10: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.fileVersion = value;
+                            else
+                                delete message.fileVersion;
+                            continue;
+                        }
+                    case 11: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.previousVersion = value;
+                            else
+                                delete message.previousVersion;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -14292,6 +16861,12 @@ export const proto = $root.proto = (() => {
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     if (!$util.isString(message.oldPathHash))
                         return "oldPathHash: string expected";
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    if (!$util.isString(message.fileVersion))
+                        return "fileVersion: string expected";
+                if (message.previousVersion != null && $Object.hasOwnProperty.call(message, "previousVersion"))
+                    if (!$util.isString(message.previousVersion))
+                        return "previousVersion: string expected";
                 return null;
             };
 
@@ -14368,6 +16943,12 @@ export const proto = $root.proto = (() => {
                 if (object.oldPathHash != null)
                     if (typeof object.oldPathHash !== "string" || object.oldPathHash.length)
                         message.oldPathHash = $String(object.oldPathHash);
+                if (object.fileVersion != null)
+                    if (typeof object.fileVersion !== "string" || object.fileVersion.length)
+                        message.fileVersion = $String(object.fileVersion);
+                if (object.previousVersion != null)
+                    if (typeof object.previousVersion !== "string" || object.previousVersion.length)
+                        message.previousVersion = $String(object.previousVersion);
                 return message;
             };
 
@@ -14414,6 +16995,8 @@ export const proto = $root.proto = (() => {
                         object.lastTime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
                     object.oldPath = "";
                     object.oldPathHash = "";
+                    object.fileVersion = "";
+                    object.previousVersion = "";
                 }
                 if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
                     object.path = message.path;
@@ -14453,6 +17036,10 @@ export const proto = $root.proto = (() => {
                     object.oldPath = message.oldPath;
                 if (message.oldPathHash != null && $Object.hasOwnProperty.call(message, "oldPathHash"))
                     object.oldPathHash = message.oldPathHash;
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    object.fileVersion = message.fileVersion;
+                if (message.previousVersion != null && $Object.hasOwnProperty.call(message, "previousVersion"))
+                    object.previousVersion = message.previousVersion;
                 return object;
             };
 
@@ -15346,6 +17933,13 @@ export const proto = $root.proto = (() => {
              * @property {string|null} [pathHash] FileSyncUploadMessage pathHash
              * @property {string|null} [sessionId] FileSyncUploadMessage sessionId
              * @property {number|Long|null} [chunkSize] FileSyncUploadMessage chunkSize
+             * @property {string|null} [expectedContentHash] FileSyncUploadMessage expectedContentHash
+             * @property {number|Long|null} [expectedSize] FileSyncUploadMessage expectedSize
+             * @property {number|Long|null} [expectedMtime] FileSyncUploadMessage expectedMtime
+             * @property {number|Long|null} [expectedCtime] FileSyncUploadMessage expectedCtime
+             * @property {boolean|null} [requiresPrepare] FileSyncUploadMessage requiresPrepare
+             * @property {string|null} [expectedSha256] FileSyncUploadMessage expectedSha256
+             * @property {string|null} [baseVersion] FileSyncUploadMessage baseVersion
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -15410,6 +18004,62 @@ export const proto = $root.proto = (() => {
             FileSyncUploadMessage.prototype.chunkSize = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * FileSyncUploadMessage expectedContentHash.
+             * @member {string} expectedContentHash
+             * @memberof proto.v1.FileSyncUploadMessage
+             * @instance
+             */
+            FileSyncUploadMessage.prototype.expectedContentHash = "";
+
+            /**
+             * FileSyncUploadMessage expectedSize.
+             * @member {number|Long} expectedSize
+             * @memberof proto.v1.FileSyncUploadMessage
+             * @instance
+             */
+            FileSyncUploadMessage.prototype.expectedSize = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+
+            /**
+             * FileSyncUploadMessage expectedMtime.
+             * @member {number|Long} expectedMtime
+             * @memberof proto.v1.FileSyncUploadMessage
+             * @instance
+             */
+            FileSyncUploadMessage.prototype.expectedMtime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+
+            /**
+             * FileSyncUploadMessage expectedCtime.
+             * @member {number|Long} expectedCtime
+             * @memberof proto.v1.FileSyncUploadMessage
+             * @instance
+             */
+            FileSyncUploadMessage.prototype.expectedCtime = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
+
+            /**
+             * FileSyncUploadMessage requiresPrepare.
+             * @member {boolean} requiresPrepare
+             * @memberof proto.v1.FileSyncUploadMessage
+             * @instance
+             */
+            FileSyncUploadMessage.prototype.requiresPrepare = false;
+
+            /**
+             * FileSyncUploadMessage expectedSha256.
+             * @member {string} expectedSha256
+             * @memberof proto.v1.FileSyncUploadMessage
+             * @instance
+             */
+            FileSyncUploadMessage.prototype.expectedSha256 = "";
+
+            /**
+             * FileSyncUploadMessage baseVersion.
+             * @member {string} baseVersion
+             * @memberof proto.v1.FileSyncUploadMessage
+             * @instance
+             */
+            FileSyncUploadMessage.prototype.baseVersion = "";
+
+            /**
              * Creates a new FileSyncUploadMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileSyncUploadMessage
@@ -15449,6 +18099,20 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.sessionId);
                 if (message.chunkSize != null && $Object.hasOwnProperty.call(message, "chunkSize") && (typeof message.chunkSize === "object" ? message.chunkSize.low || message.chunkSize.high : message.chunkSize !== 0))
                     writer.uint32(/* id 4, wireType 0 =*/32).int64(message.chunkSize);
+                if (message.expectedContentHash != null && $Object.hasOwnProperty.call(message, "expectedContentHash") && message.expectedContentHash !== "")
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.expectedContentHash);
+                if (message.expectedSize != null && $Object.hasOwnProperty.call(message, "expectedSize") && (typeof message.expectedSize === "object" ? message.expectedSize.low || message.expectedSize.high : message.expectedSize !== 0))
+                    writer.uint32(/* id 6, wireType 0 =*/48).int64(message.expectedSize);
+                if (message.expectedMtime != null && $Object.hasOwnProperty.call(message, "expectedMtime") && (typeof message.expectedMtime === "object" ? message.expectedMtime.low || message.expectedMtime.high : message.expectedMtime !== 0))
+                    writer.uint32(/* id 7, wireType 0 =*/56).int64(message.expectedMtime);
+                if (message.expectedCtime != null && $Object.hasOwnProperty.call(message, "expectedCtime") && (typeof message.expectedCtime === "object" ? message.expectedCtime.low || message.expectedCtime.high : message.expectedCtime !== 0))
+                    writer.uint32(/* id 8, wireType 0 =*/64).int64(message.expectedCtime);
+                if (message.requiresPrepare != null && $Object.hasOwnProperty.call(message, "requiresPrepare") && message.requiresPrepare !== false)
+                    writer.uint32(/* id 9, wireType 0 =*/72).bool(message.requiresPrepare);
+                if (message.expectedSha256 != null && $Object.hasOwnProperty.call(message, "expectedSha256") && message.expectedSha256 !== "")
+                    writer.uint32(/* id 10, wireType 2 =*/82).string(message.expectedSha256);
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion") && message.baseVersion !== "")
+                    writer.uint32(/* id 11, wireType 2 =*/90).string(message.baseVersion);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -15532,6 +18196,69 @@ export const proto = $root.proto = (() => {
                                 delete message.chunkSize;
                             continue;
                         }
+                    case 5: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.expectedContentHash = value;
+                            else
+                                delete message.expectedContentHash;
+                            continue;
+                        }
+                    case 6: {
+                            if (wireType !== 0)
+                                break;
+                            if (typeof (value = reader.int64()) === "object" ? value.low || value.high : value !== 0)
+                                message.expectedSize = value;
+                            else
+                                delete message.expectedSize;
+                            continue;
+                        }
+                    case 7: {
+                            if (wireType !== 0)
+                                break;
+                            if (typeof (value = reader.int64()) === "object" ? value.low || value.high : value !== 0)
+                                message.expectedMtime = value;
+                            else
+                                delete message.expectedMtime;
+                            continue;
+                        }
+                    case 8: {
+                            if (wireType !== 0)
+                                break;
+                            if (typeof (value = reader.int64()) === "object" ? value.low || value.high : value !== 0)
+                                message.expectedCtime = value;
+                            else
+                                delete message.expectedCtime;
+                            continue;
+                        }
+                    case 9: {
+                            if (wireType !== 0)
+                                break;
+                            if (value = reader.bool())
+                                message.requiresPrepare = value;
+                            else
+                                delete message.requiresPrepare;
+                            continue;
+                        }
+                    case 10: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.expectedSha256 = value;
+                            else
+                                delete message.expectedSha256;
+                            continue;
+                        }
+                    case 11: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.baseVersion = value;
+                            else
+                                delete message.baseVersion;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -15587,6 +18314,27 @@ export const proto = $root.proto = (() => {
                 if (message.chunkSize != null && $Object.hasOwnProperty.call(message, "chunkSize"))
                     if (!$util.isInteger(message.chunkSize) && !(message.chunkSize && $util.isInteger(message.chunkSize.low) && $util.isInteger(message.chunkSize.high)))
                         return "chunkSize: integer|Long expected";
+                if (message.expectedContentHash != null && $Object.hasOwnProperty.call(message, "expectedContentHash"))
+                    if (!$util.isString(message.expectedContentHash))
+                        return "expectedContentHash: string expected";
+                if (message.expectedSize != null && $Object.hasOwnProperty.call(message, "expectedSize"))
+                    if (!$util.isInteger(message.expectedSize) && !(message.expectedSize && $util.isInteger(message.expectedSize.low) && $util.isInteger(message.expectedSize.high)))
+                        return "expectedSize: integer|Long expected";
+                if (message.expectedMtime != null && $Object.hasOwnProperty.call(message, "expectedMtime"))
+                    if (!$util.isInteger(message.expectedMtime) && !(message.expectedMtime && $util.isInteger(message.expectedMtime.low) && $util.isInteger(message.expectedMtime.high)))
+                        return "expectedMtime: integer|Long expected";
+                if (message.expectedCtime != null && $Object.hasOwnProperty.call(message, "expectedCtime"))
+                    if (!$util.isInteger(message.expectedCtime) && !(message.expectedCtime && $util.isInteger(message.expectedCtime.low) && $util.isInteger(message.expectedCtime.high)))
+                        return "expectedCtime: integer|Long expected";
+                if (message.requiresPrepare != null && $Object.hasOwnProperty.call(message, "requiresPrepare"))
+                    if (typeof message.requiresPrepare !== "boolean")
+                        return "requiresPrepare: boolean expected";
+                if (message.expectedSha256 != null && $Object.hasOwnProperty.call(message, "expectedSha256"))
+                    if (!$util.isString(message.expectedSha256))
+                        return "expectedSha256: string expected";
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    if (!$util.isString(message.baseVersion))
+                        return "baseVersion: string expected";
                 return null;
             };
 
@@ -15627,6 +18375,48 @@ export const proto = $root.proto = (() => {
                             message.chunkSize = object.chunkSize;
                         else if (typeof object.chunkSize === "object")
                             message.chunkSize = new $util.LongBits(object.chunkSize.low >>> 0, object.chunkSize.high >>> 0).toNumber();
+                if (object.expectedContentHash != null)
+                    if (typeof object.expectedContentHash !== "string" || object.expectedContentHash.length)
+                        message.expectedContentHash = $String(object.expectedContentHash);
+                if (object.expectedSize != null)
+                    if (typeof object.expectedSize === "object" ? object.expectedSize.low || object.expectedSize.high : $Number(object.expectedSize) !== 0)
+                        if ($util.Long)
+                            message.expectedSize = $util.Long.fromValue(object.expectedSize, false);
+                        else if (typeof object.expectedSize === "string")
+                            message.expectedSize = $parseInt(object.expectedSize, 10);
+                        else if (typeof object.expectedSize === "number")
+                            message.expectedSize = object.expectedSize;
+                        else if (typeof object.expectedSize === "object")
+                            message.expectedSize = new $util.LongBits(object.expectedSize.low >>> 0, object.expectedSize.high >>> 0).toNumber();
+                if (object.expectedMtime != null)
+                    if (typeof object.expectedMtime === "object" ? object.expectedMtime.low || object.expectedMtime.high : $Number(object.expectedMtime) !== 0)
+                        if ($util.Long)
+                            message.expectedMtime = $util.Long.fromValue(object.expectedMtime, false);
+                        else if (typeof object.expectedMtime === "string")
+                            message.expectedMtime = $parseInt(object.expectedMtime, 10);
+                        else if (typeof object.expectedMtime === "number")
+                            message.expectedMtime = object.expectedMtime;
+                        else if (typeof object.expectedMtime === "object")
+                            message.expectedMtime = new $util.LongBits(object.expectedMtime.low >>> 0, object.expectedMtime.high >>> 0).toNumber();
+                if (object.expectedCtime != null)
+                    if (typeof object.expectedCtime === "object" ? object.expectedCtime.low || object.expectedCtime.high : $Number(object.expectedCtime) !== 0)
+                        if ($util.Long)
+                            message.expectedCtime = $util.Long.fromValue(object.expectedCtime, false);
+                        else if (typeof object.expectedCtime === "string")
+                            message.expectedCtime = $parseInt(object.expectedCtime, 10);
+                        else if (typeof object.expectedCtime === "number")
+                            message.expectedCtime = object.expectedCtime;
+                        else if (typeof object.expectedCtime === "object")
+                            message.expectedCtime = new $util.LongBits(object.expectedCtime.low >>> 0, object.expectedCtime.high >>> 0).toNumber();
+                if (object.requiresPrepare != null)
+                    if (object.requiresPrepare)
+                        message.requiresPrepare = $Boolean(object.requiresPrepare);
+                if (object.expectedSha256 != null)
+                    if (typeof object.expectedSha256 !== "string" || object.expectedSha256.length)
+                        message.expectedSha256 = $String(object.expectedSha256);
+                if (object.baseVersion != null)
+                    if (typeof object.baseVersion !== "string" || object.baseVersion.length)
+                        message.baseVersion = $String(object.baseVersion);
                 return message;
             };
 
@@ -15656,6 +18446,25 @@ export const proto = $root.proto = (() => {
                         object.chunkSize = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
                     } else
                         object.chunkSize = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.expectedContentHash = "";
+                    if ($util.Long) {
+                        let long = new $util.Long(0, 0, false);
+                        object.expectedSize = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
+                    } else
+                        object.expectedSize = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    if ($util.Long) {
+                        let long = new $util.Long(0, 0, false);
+                        object.expectedMtime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
+                    } else
+                        object.expectedMtime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    if ($util.Long) {
+                        let long = new $util.Long(0, 0, false);
+                        object.expectedCtime = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
+                    } else
+                        object.expectedCtime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.requiresPrepare = false;
+                    object.expectedSha256 = "";
+                    object.baseVersion = "";
                 }
                 if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
                     object.path = message.path;
@@ -15670,6 +18479,35 @@ export const proto = $root.proto = (() => {
                         object.chunkSize = options.longs === $String ? $String(message.chunkSize) : message.chunkSize;
                     else
                         object.chunkSize = options.longs === $String ? $util.Long.prototype.toString.call(message.chunkSize) : options.longs === $Number ? new $util.LongBits(message.chunkSize.low >>> 0, message.chunkSize.high >>> 0).toNumber() : message.chunkSize;
+                if (message.expectedContentHash != null && $Object.hasOwnProperty.call(message, "expectedContentHash"))
+                    object.expectedContentHash = message.expectedContentHash;
+                if (message.expectedSize != null && $Object.hasOwnProperty.call(message, "expectedSize"))
+                    if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
+                        object.expectedSize = typeof message.expectedSize === "number" ? $BigInt(message.expectedSize) : $util.Long.fromBits(message.expectedSize.low >>> 0, message.expectedSize.high >>> 0, false).toBigInt();
+                    else if (typeof message.expectedSize === "number")
+                        object.expectedSize = options.longs === $String ? $String(message.expectedSize) : message.expectedSize;
+                    else
+                        object.expectedSize = options.longs === $String ? $util.Long.prototype.toString.call(message.expectedSize) : options.longs === $Number ? new $util.LongBits(message.expectedSize.low >>> 0, message.expectedSize.high >>> 0).toNumber() : message.expectedSize;
+                if (message.expectedMtime != null && $Object.hasOwnProperty.call(message, "expectedMtime"))
+                    if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
+                        object.expectedMtime = typeof message.expectedMtime === "number" ? $BigInt(message.expectedMtime) : $util.Long.fromBits(message.expectedMtime.low >>> 0, message.expectedMtime.high >>> 0, false).toBigInt();
+                    else if (typeof message.expectedMtime === "number")
+                        object.expectedMtime = options.longs === $String ? $String(message.expectedMtime) : message.expectedMtime;
+                    else
+                        object.expectedMtime = options.longs === $String ? $util.Long.prototype.toString.call(message.expectedMtime) : options.longs === $Number ? new $util.LongBits(message.expectedMtime.low >>> 0, message.expectedMtime.high >>> 0).toNumber() : message.expectedMtime;
+                if (message.expectedCtime != null && $Object.hasOwnProperty.call(message, "expectedCtime"))
+                    if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
+                        object.expectedCtime = typeof message.expectedCtime === "number" ? $BigInt(message.expectedCtime) : $util.Long.fromBits(message.expectedCtime.low >>> 0, message.expectedCtime.high >>> 0, false).toBigInt();
+                    else if (typeof message.expectedCtime === "number")
+                        object.expectedCtime = options.longs === $String ? $String(message.expectedCtime) : message.expectedCtime;
+                    else
+                        object.expectedCtime = options.longs === $String ? $util.Long.prototype.toString.call(message.expectedCtime) : options.longs === $Number ? new $util.LongBits(message.expectedCtime.low >>> 0, message.expectedCtime.high >>> 0).toNumber() : message.expectedCtime;
+                if (message.requiresPrepare != null && $Object.hasOwnProperty.call(message, "requiresPrepare"))
+                    object.requiresPrepare = message.requiresPrepare;
+                if (message.expectedSha256 != null && $Object.hasOwnProperty.call(message, "expectedSha256"))
+                    object.expectedSha256 = message.expectedSha256;
+                if (message.baseVersion != null && $Object.hasOwnProperty.call(message, "baseVersion"))
+                    object.baseVersion = message.baseVersion;
                 return object;
             };
 
@@ -15714,6 +18552,7 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [chunkSize] FileSyncDownloadMessage chunkSize
              * @property {number|Long|null} [totalChunks] FileSyncDownloadMessage totalChunks
              * @property {number|Long|null} [size] FileSyncDownloadMessage size
+             * @property {string|null} [fileVersion] FileSyncDownloadMessage fileVersion
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -15810,6 +18649,14 @@ export const proto = $root.proto = (() => {
             FileSyncDownloadMessage.prototype.size = $util.Long ? $util.Long.fromBits(0,0,false) : 0;
 
             /**
+             * FileSyncDownloadMessage fileVersion.
+             * @member {string} fileVersion
+             * @memberof proto.v1.FileSyncDownloadMessage
+             * @instance
+             */
+            FileSyncDownloadMessage.prototype.fileVersion = "";
+
+            /**
              * Creates a new FileSyncDownloadMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileSyncDownloadMessage
@@ -15857,6 +18704,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 7, wireType 0 =*/56).int64(message.totalChunks);
                 if (message.size != null && $Object.hasOwnProperty.call(message, "size") && (typeof message.size === "object" ? message.size.low || message.size.high : message.size !== 0))
                     writer.uint32(/* id 8, wireType 0 =*/64).int64(message.size);
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion") && message.fileVersion !== "")
+                    writer.uint32(/* id 9, wireType 2 =*/74).string(message.fileVersion);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -15976,6 +18825,15 @@ export const proto = $root.proto = (() => {
                                 delete message.size;
                             continue;
                         }
+                    case 9: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.fileVersion = value;
+                            else
+                                delete message.fileVersion;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -16043,6 +18901,9 @@ export const proto = $root.proto = (() => {
                 if (message.size != null && $Object.hasOwnProperty.call(message, "size"))
                     if (!$util.isInteger(message.size) && !(message.size && $util.isInteger(message.size.low) && $util.isInteger(message.size.high)))
                         return "size: integer|Long expected";
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    if (!$util.isString(message.fileVersion))
+                        return "fileVersion: string expected";
                 return null;
             };
 
@@ -16123,6 +18984,9 @@ export const proto = $root.proto = (() => {
                             message.size = object.size;
                         else if (typeof object.size === "object")
                             message.size = new $util.LongBits(object.size.low >>> 0, object.size.high >>> 0).toNumber();
+                if (object.fileVersion != null)
+                    if (typeof object.fileVersion !== "string" || object.fileVersion.length)
+                        message.fileVersion = $String(object.fileVersion);
                 return message;
             };
 
@@ -16172,6 +19036,7 @@ export const proto = $root.proto = (() => {
                         object.size = options.longs === $String ? long.toString() : options.longs === $Number ? long.toNumber() : typeof $BigInt !== "undefined" && options.longs === $BigInt ? long.toBigInt() : long;
                     } else
                         object.size = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
+                    object.fileVersion = "";
                 }
                 if (message.path != null && $Object.hasOwnProperty.call(message, "path"))
                     object.path = message.path;
@@ -16214,6 +19079,8 @@ export const proto = $root.proto = (() => {
                         object.size = options.longs === $String ? $String(message.size) : message.size;
                     else
                         object.size = options.longs === $String ? $util.Long.prototype.toString.call(message.size) : options.longs === $Number ? new $util.LongBits(message.size.low >>> 0, message.size.high >>> 0).toNumber() : message.size;
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    object.fileVersion = message.fileVersion;
                 return object;
             };
 
@@ -16253,6 +19120,8 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [lastTime] FileRenameAckMessage lastTime
              * @property {string|null} [path] FileRenameAckMessage path
              * @property {string|null} [pathHash] FileRenameAckMessage pathHash
+             * @property {string|null} [operationId] FileRenameAckMessage operationId
+             * @property {string|null} [fileVersion] FileRenameAckMessage fileVersion
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -16309,6 +19178,22 @@ export const proto = $root.proto = (() => {
             FileRenameAckMessage.prototype.pathHash = "";
 
             /**
+             * FileRenameAckMessage operationId.
+             * @member {string} operationId
+             * @memberof proto.v1.FileRenameAckMessage
+             * @instance
+             */
+            FileRenameAckMessage.prototype.operationId = "";
+
+            /**
+             * FileRenameAckMessage fileVersion.
+             * @member {string} fileVersion
+             * @memberof proto.v1.FileRenameAckMessage
+             * @instance
+             */
+            FileRenameAckMessage.prototype.fileVersion = "";
+
+            /**
              * Creates a new FileRenameAckMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileRenameAckMessage
@@ -16346,6 +19231,10 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId") && message.operationId !== "")
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.operationId);
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion") && message.fileVersion !== "")
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.fileVersion);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -16420,6 +19309,24 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.operationId = value;
+                            else
+                                delete message.operationId;
+                            continue;
+                        }
+                    case 5: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.fileVersion = value;
+                            else
+                                delete message.fileVersion;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -16472,6 +19379,12 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId"))
+                    if (!$util.isString(message.operationId))
+                        return "operationId: string expected";
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    if (!$util.isString(message.fileVersion))
+                        return "fileVersion: string expected";
                 return null;
             };
 
@@ -16509,6 +19422,12 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.operationId != null)
+                    if (typeof object.operationId !== "string" || object.operationId.length)
+                        message.operationId = $String(object.operationId);
+                if (object.fileVersion != null)
+                    if (typeof object.fileVersion !== "string" || object.fileVersion.length)
+                        message.fileVersion = $String(object.fileVersion);
                 return message;
             };
 
@@ -16537,6 +19456,8 @@ export const proto = $root.proto = (() => {
                         object.lastTime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
                     object.path = "";
                     object.pathHash = "";
+                    object.operationId = "";
+                    object.fileVersion = "";
                 }
                 if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
                     if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
@@ -16549,6 +19470,10 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId"))
+                    object.operationId = message.operationId;
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    object.fileVersion = message.fileVersion;
                 return object;
             };
 
@@ -16588,6 +19513,9 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [lastTime] FileUploadAckMessage lastTime
              * @property {string|null} [path] FileUploadAckMessage path
              * @property {string|null} [pathHash] FileUploadAckMessage pathHash
+             * @property {string|null} [sessionId] FileUploadAckMessage sessionId
+             * @property {string|null} [contentHash] FileUploadAckMessage contentHash
+             * @property {string|null} [fileVersion] FileUploadAckMessage fileVersion
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -16644,6 +19572,30 @@ export const proto = $root.proto = (() => {
             FileUploadAckMessage.prototype.pathHash = "";
 
             /**
+             * FileUploadAckMessage sessionId.
+             * @member {string} sessionId
+             * @memberof proto.v1.FileUploadAckMessage
+             * @instance
+             */
+            FileUploadAckMessage.prototype.sessionId = "";
+
+            /**
+             * FileUploadAckMessage contentHash.
+             * @member {string} contentHash
+             * @memberof proto.v1.FileUploadAckMessage
+             * @instance
+             */
+            FileUploadAckMessage.prototype.contentHash = "";
+
+            /**
+             * FileUploadAckMessage fileVersion.
+             * @member {string} fileVersion
+             * @memberof proto.v1.FileUploadAckMessage
+             * @instance
+             */
+            FileUploadAckMessage.prototype.fileVersion = "";
+
+            /**
              * Creates a new FileUploadAckMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileUploadAckMessage
@@ -16681,6 +19633,12 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId") && message.sessionId !== "")
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.sessionId);
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash") && message.contentHash !== "")
+                    writer.uint32(/* id 5, wireType 2 =*/42).string(message.contentHash);
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion") && message.fileVersion !== "")
+                    writer.uint32(/* id 6, wireType 2 =*/50).string(message.fileVersion);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -16755,6 +19713,33 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.sessionId = value;
+                            else
+                                delete message.sessionId;
+                            continue;
+                        }
+                    case 5: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.contentHash = value;
+                            else
+                                delete message.contentHash;
+                            continue;
+                        }
+                    case 6: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.fileVersion = value;
+                            else
+                                delete message.fileVersion;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -16807,6 +19792,15 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                    if (!$util.isString(message.sessionId))
+                        return "sessionId: string expected";
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                    if (!$util.isString(message.contentHash))
+                        return "contentHash: string expected";
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    if (!$util.isString(message.fileVersion))
+                        return "fileVersion: string expected";
                 return null;
             };
 
@@ -16844,6 +19838,15 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.sessionId != null)
+                    if (typeof object.sessionId !== "string" || object.sessionId.length)
+                        message.sessionId = $String(object.sessionId);
+                if (object.contentHash != null)
+                    if (typeof object.contentHash !== "string" || object.contentHash.length)
+                        message.contentHash = $String(object.contentHash);
+                if (object.fileVersion != null)
+                    if (typeof object.fileVersion !== "string" || object.fileVersion.length)
+                        message.fileVersion = $String(object.fileVersion);
                 return message;
             };
 
@@ -16872,6 +19875,9 @@ export const proto = $root.proto = (() => {
                         object.lastTime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
                     object.path = "";
                     object.pathHash = "";
+                    object.sessionId = "";
+                    object.contentHash = "";
+                    object.fileVersion = "";
                 }
                 if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
                     if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
@@ -16884,6 +19890,12 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.sessionId != null && $Object.hasOwnProperty.call(message, "sessionId"))
+                    object.sessionId = message.sessionId;
+                if (message.contentHash != null && $Object.hasOwnProperty.call(message, "contentHash"))
+                    object.contentHash = message.contentHash;
+                if (message.fileVersion != null && $Object.hasOwnProperty.call(message, "fileVersion"))
+                    object.fileVersion = message.fileVersion;
                 return object;
             };
 
@@ -16923,6 +19935,7 @@ export const proto = $root.proto = (() => {
              * @property {number|Long|null} [lastTime] FileDeleteAckMessage lastTime
              * @property {string|null} [path] FileDeleteAckMessage path
              * @property {string|null} [pathHash] FileDeleteAckMessage pathHash
+             * @property {string|null} [operationId] FileDeleteAckMessage operationId
              * @property {Array.<Uint8Array>} [$unknowns] Unknown fields preserved while decoding when enabled
              */
 
@@ -16979,6 +19992,14 @@ export const proto = $root.proto = (() => {
             FileDeleteAckMessage.prototype.pathHash = "";
 
             /**
+             * FileDeleteAckMessage operationId.
+             * @member {string} operationId
+             * @memberof proto.v1.FileDeleteAckMessage
+             * @instance
+             */
+            FileDeleteAckMessage.prototype.operationId = "";
+
+            /**
              * Creates a new FileDeleteAckMessage instance using the specified properties.
              * @function create
              * @memberof proto.v1.FileDeleteAckMessage
@@ -17016,6 +20037,8 @@ export const proto = $root.proto = (() => {
                     writer.uint32(/* id 2, wireType 2 =*/18).string(message.path);
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash") && message.pathHash !== "")
                     writer.uint32(/* id 3, wireType 2 =*/26).string(message.pathHash);
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId") && message.operationId !== "")
+                    writer.uint32(/* id 4, wireType 2 =*/34).string(message.operationId);
                 if (message.$unknowns != null && $Object.hasOwnProperty.call(message, "$unknowns"))
                     for (let i = 0; i < message.$unknowns.length; ++i)
                         writer.raw(message.$unknowns[i]);
@@ -17090,6 +20113,15 @@ export const proto = $root.proto = (() => {
                                 delete message.pathHash;
                             continue;
                         }
+                    case 4: {
+                            if (wireType !== 2)
+                                break;
+                            if ((value = reader.stringVerify()).length)
+                                message.operationId = value;
+                            else
+                                delete message.operationId;
+                            continue;
+                        }
                     }
                     reader.skipType(wireType, _depth, tag);
                     if (!reader.discardUnknown) {
@@ -17142,6 +20174,9 @@ export const proto = $root.proto = (() => {
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     if (!$util.isString(message.pathHash))
                         return "pathHash: string expected";
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId"))
+                    if (!$util.isString(message.operationId))
+                        return "operationId: string expected";
                 return null;
             };
 
@@ -17179,6 +20214,9 @@ export const proto = $root.proto = (() => {
                 if (object.pathHash != null)
                     if (typeof object.pathHash !== "string" || object.pathHash.length)
                         message.pathHash = $String(object.pathHash);
+                if (object.operationId != null)
+                    if (typeof object.operationId !== "string" || object.operationId.length)
+                        message.operationId = $String(object.operationId);
                 return message;
             };
 
@@ -17207,6 +20245,7 @@ export const proto = $root.proto = (() => {
                         object.lastTime = options.longs === $String ? "0" : typeof $BigInt !== "undefined" && options.longs === $BigInt ? $BigInt("0") : 0;
                     object.path = "";
                     object.pathHash = "";
+                    object.operationId = "";
                 }
                 if (message.lastTime != null && $Object.hasOwnProperty.call(message, "lastTime"))
                     if (typeof $BigInt !== "undefined" && options.longs === $BigInt)
@@ -17219,6 +20258,8 @@ export const proto = $root.proto = (() => {
                     object.path = message.path;
                 if (message.pathHash != null && $Object.hasOwnProperty.call(message, "pathHash"))
                     object.pathHash = message.pathHash;
+                if (message.operationId != null && $Object.hasOwnProperty.call(message, "operationId"))
+                    object.operationId = message.operationId;
                 return object;
             };
 

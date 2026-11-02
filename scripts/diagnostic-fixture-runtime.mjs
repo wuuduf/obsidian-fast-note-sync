@@ -12,7 +12,7 @@ export function loadDiagnosticRuntime() {
   const module = { exports: {} };
   vm.runInNewContext(result.outputFiles[0].text, {
     module, exports: module.exports, require: createRequire(import.meta.url), crypto: crypto.webcrypto,
-    Uint8Array, TextEncoder, TextDecoder, ArrayBuffer, console,
+    Uint8Array, TextEncoder, TextDecoder, ArrayBuffer, Number, String, console,
   });
   return module.exports;
 }

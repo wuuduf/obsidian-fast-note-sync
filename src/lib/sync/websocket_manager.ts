@@ -1,6 +1,6 @@
 import { moment, Platform, normalizePath } from "obsidian";
 
-import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue, receiveFileUploadSessionNotFound } from "./operator_file";
+import { handleFileChunkDownload, BINARY_PREFIX_FILE_SYNC, clearUploadQueue, receiveFileUploadSessionNotFound, receiveFileConflict, receiveFileMutationConflict, receiveFileMutationFailed, receiveFileRePushFailed } from "./operator_file";
 import { dump, addRandomParam, showSyncNotice, safeStringify, getPluginDir, hashContent } from "../utils/helpers";
 import { enSendDTOToProtobuf, deReceivePacket } from "../../pb/protobuf_mapper";
 import { receiveOperators, startupSync, startupFullSync, settleAllBatchSendSessionsOnClose } from "./operator";
@@ -162,10 +162,20 @@ export class WebSocketManager {
         return true;
       },
       onOpen: (client) => {
+        this.plugin.syncState.protectedFilesSupported = false;
+        this.plugin.syncState.attachmentConflictSupported = false;
+        this.plugin.syncState.attachmentRePushSafeSupported = false;
+        this.plugin.syncState.attachmentMutationCASSupported = false;
+        this.plugin.syncState.attachmentVersionCASSupported = false;
         client.Send(WSAction.ClientReceiveAuth, this.plugin.settings.apiToken);
         dump("Service authorization");
       },
       onClose: (client, code, reason) => {
+        this.plugin.syncState.protectedFilesSupported = false;
+        this.plugin.syncState.attachmentConflictSupported = false;
+        this.plugin.syncState.attachmentRePushSafeSupported = false;
+        this.plugin.syncState.attachmentMutationCASSupported = false;
+        this.plugin.syncState.attachmentVersionCASSupported = false;
         this.plugin.retryRecovery?.interrupt('连接已断开，请连接后重新同步。');
         if (this.plugin.isSyncing) {
           this.plugin.isSyncing = false;
@@ -233,6 +243,12 @@ export class WebSocketManager {
     return this.client.register();
   }
   public unRegister(setUnregistered = false) {
+    this.plugin.syncState.protectedFilesSupported = false;
+    this.plugin.syncState.attachmentConflictSupported = false;
+    this.plugin.syncState.attachmentRePushSafeSupported = false;
+    this.plugin.syncState.attachmentMutationCASSupported = false;
+    this.plugin.syncState.attachmentVersionCASSupported = false;
+    clearUploadQueue();
     this.client.unRegister(setUnregistered);
   }
   public isConnected(): boolean {
@@ -296,10 +312,32 @@ export class WebSocketManager {
     // Scope them before touching retry state or adding a historical log entry.
     if (data.vault && data.vault !== this.plugin.settings.vault) return;
     const control = msgAction === WSAction.ClientReceiveAuth || msgAction === WSAction.ClientReceiveInfo;
-    if (!control && this.plugin.retryRecovery?.acceptsContext() === false) return;
-    if (!control && data.context && this.plugin.syncState.activeSyncContext && data.context !== this.plugin.syncState.activeSyncContext) return;
-    if (data.context && validTraceId(data.traceId)) this.plugin.diagnostics?.begin(data.context, data.traceId);
+    // Direct mutation replies have their own operation identity and may arrive
+    // after a sync round or during another round's retry window. The handlers
+    // validate ID, path and vault before touching pending state.
+    const directMutation = (msgAction === 'FileDeleteAck' || msgAction === 'FileRenameAck' || msgAction === 'FileMutationConflict' || msgAction === 'FileMutationFailed') &&
+      !(typeof data.pageIndex === 'number' && data.pageIndex > 0) && typeof data.data?.operationId === 'string' && data.data.operationId.length > 0;
+    if (!control && !directMutation && this.plugin.retryRecovery?.acceptsContext() === false) return;
+    if (!control && !directMutation && data.context && this.plugin.syncState.activeSyncContext && data.context !== this.plugin.syncState.activeSyncContext) return;
+    if (!directMutation && data.context && validTraceId(data.traceId)) this.plugin.diagnostics?.begin(data.context, data.traceId);
     data.traceId = sourceTraceId(this.plugin, data.context, data.traceId);
+    if (msgAction === "FileConflict") {
+      const payload = data.data && typeof data.data === "object" ? data.data : {};
+      receiveFileConflict({ ...payload, context: data.context, traceId: data.traceId, pageIndex: typeof data.pageIndex === "number" && data.pageIndex > 0 ? data.pageIndex - 1 : undefined }, this.plugin);
+      return;
+    }
+    if (msgAction === "FileRePushFailed") {
+      const payload = data.data && typeof data.data === "object" ? data.data : {};
+      receiveFileRePushFailed({ ...payload, context: data.context, traceId: data.traceId }, this.plugin);
+      return;
+    }
+    if (msgAction === "FileMutationConflict" || msgAction === "FileMutationFailed") {
+      const payload = data.data && typeof data.data === "object" ? data.data : {};
+      const message = { ...payload, context: data.context, traceId: data.traceId, pageIndex: typeof data.pageIndex === "number" && data.pageIndex > 0 ? data.pageIndex - 1 : undefined };
+      if (msgAction === "FileMutationConflict") void receiveFileMutationConflict(message, this.plugin);
+      else receiveFileMutationFailed(message, this.plugin);
+      return;
+    }
     if (data.code <= 0 || data.code >= 300) {
       if (this.plugin.retryRecovery?.error(data)) return;
       if (data.data?.reason === 'download_cache_expired') return; // late ACKs, no live retry
@@ -321,6 +359,13 @@ export class WebSocketManager {
         return;
       } else {
         this.client.isAuth = true;
+        // Capability must be reset on every connection; an old server cannot
+        // safely process a partially scanned attachment list.
+        this.plugin.syncState.protectedFilesSupported = data.data?.protectedFilesSupported === true;
+        this.plugin.syncState.attachmentConflictSupported = data.data?.attachmentConflictSupported === true;
+        this.plugin.syncState.attachmentRePushSafeSupported = data.data?.attachmentRePushSafeSupported === true;
+        this.plugin.syncState.attachmentMutationCASSupported = data.data?.attachmentMutationCASSupported === true;
+        this.plugin.syncState.attachmentVersionCASSupported = data.data?.attachmentVersionCASSupported === true;
         const paths = (data.data?.["paths"] as string[]) || [];
         this.plugin.shareIndicatorManager?.updateSharedPaths(paths);
         if (data.data) {
@@ -432,7 +477,7 @@ export class WebSocketManager {
       // Filter based on Context: if there's an active sync context, incoming messages (including Acks) must match
       if (this.plugin.syncState.activeSyncContext) {
         const isControlMsg = msgAction === WSAction.ClientReceiveAuth || msgAction === WSAction.ClientReceiveInfo;
-        if (!isControlMsg && data.context !== this.plugin.syncState.activeSyncContext) {
+        if (!isControlMsg && !directMutation && data.context !== this.plugin.syncState.activeSyncContext) {
           dump(`[SyncContext] Discard message ${msgAction} due to mismatched context. Expected: ${this.plugin.syncState.activeSyncContext}, Got: ${data.context}`);
           return;
         }
